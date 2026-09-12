@@ -1,6 +1,28 @@
 # Writer workspace status
 
-## Current Workshop caret and rewind update — 12 September 2026
+## Current chapter navigation update — 12 September 2026
+
+Application code: `ad7742d`. The chapter list now scrolls inside the available
+sidebar, including with oversized saved section heights. Linked Markdown books
+have a read-only **Scenes and sections** outline through the sidebar button and
+top Scenes/Split controls. It uses the live buffer, checks source/identity before
+jumps, and keeps the editor instance, unsaved text and undo through mode changes.
+
+Both author Brave tabs load `index-CeXZCAS2.js` (797.13 KiB gzip) at port 28000,
+using the existing backend PID 2176153. The primary tab is open on numbered
+Chapter 5 in Split; the second remains on Chapter 1. Original book text and
+Workshop history were preserved. All 149 original files retain their hashes,
+sizes, permission modes and membership.
+
+Backend: 1,004 passed. Frontend: 112 files, 1,518 tests. Browser fixture: 9;
+fullstack: 49; focused sidebar/linked-outline regressions: 5. Full documentation
+browser suite: 116 passed directly, one tutorial case passed on retry. Required
+code/style/type/build checks pass, with zero ESLint errors and 62 warnings.
+See [navigation acceptance](../../evidence/navigation-acceptance.md) and
+[runtime identity](../../evidence/navigation-runtime.json) for exact scope,
+independent review, served asset hashes and the browser-run result.
+
+## Workshop caret and rewind update — 12 September 2026
 
 Application code: `9f232e8`. The app at http://127.0.0.1:28000 now sends fresh
 caret/document context on every Workshop message and exposes a Rewind button on

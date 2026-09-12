@@ -1,0 +1,50 @@
+{
+  "recorded_at": "2026-09-12T21:40:15.852287+00:00",
+  "application_commit": "ad7742db3bc2b3a33402d52b5e0a75020d9f67f5",
+  "runtime_url": "http://127.0.0.1:28000/static/dist/index.html",
+  "backend_pid": 2176153,
+  "backend_unchanged_from_caret_rewind": true,
+  "assets": [
+    {
+      "path": "static/dist/assets/index-CeXZCAS2.js",
+      "sha256": "125a30964633979bea53e9a9950421e23a0443af1029f9c6522dc873f0405320"
+    },
+    {
+      "path": "static/dist/assets/LinkedSceneOutline-DIb2945x.js",
+      "sha256": "ae8142fbe9307f6ae2b6fff974260303e420a96f3e7d01b76bfc2648eedfbe96"
+    },
+    {
+      "path": "static/dist/assets/index-DzalafZ9.css",
+      "sha256": "8fdba8dd482ee64b31a5990e9f20c63c2776d79a0ec262a15c97d7488c110f29"
+    }
+  ],
+  "entry_bundle_gzip_kib": 797.13,
+  "original_book_file_count": 149,
+  "original_hash_size_mode_membership_unchanged": true,
+  "author_tabs": [
+    {
+      "chapter": "numbered chapter 5",
+      "view": "split"
+    },
+    {
+      "chapter": "numbered chapter 1",
+      "view": "page"
+    }
+  ],
+  "workshop_storage_values_preserved": true,
+  "isolated_headed_backend_closed": true,
+  "isolated_headed_window_closed": true,
+  "evidence": "navigation-acceptance.md",
+  "validation": {
+    "backend_passed": 1004,
+    "frontend_files": 112,
+    "frontend_tests_passed": 1518,
+    "cursor_browser_passed": 9,
+    "fullstack_browser_passed": 49,
+    "docs_browser_passed_without_retry": 116,
+    "docs_browser_passed_on_retry": 1,
+    "new_navigation_browser_passed_without_retry": 5,
+    "eslint_errors": 0,
+    "eslint_warnings": 62
+  }
+}
