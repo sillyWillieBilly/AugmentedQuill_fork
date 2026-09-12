@@ -1,6 +1,26 @@
 # Writer workspace status
 
-## Current linked Markdown workspace — 12 September 2026
+## Current Workshop caret and rewind update — 12 September 2026
+
+Application code: `9f232e8`. The app at http://127.0.0.1:28000 now sends fresh
+caret/document context on every Workshop message and exposes a Rewind button on
+each user turn. Rewind restores an editable draft while retaining the original
+conversation and preserving manuscript edits. The latest author request has a
+mandatory context allocation; failed-send drafts survive reopening.
+
+The running backend PID is 2176153 and the main bundle is `index-DCEkP2lS.js`
+(796.23 KiB gzip). Three actual ModelWarden writer requests in headed Brave
+verified moved-caret follow-ups and an exact selected-text answer after rewind.
+The user's book buffer, six saved workshops, current conversation and caret on
+line 13 survived refresh. All 149 original book files remained unchanged.
+
+Backend: 1,004 tests plus 20 subtests. Frontend: 110 files, 1,496 tests. Cursor
+browser fixture: 9 tests; fullstack browser: 49 tests. Required code/style/type/build checks passed; ESLint
+has zero errors and 63 warnings. Independent review found and resolved two
+context/draft edge cases. See [caret and rewind acceptance](../../evidence/caret-rewind-acceptance.md)
+for scope, browser evidence and preserved-history behavior.
+
+## Linked Markdown baseline — 12 September 2026
 
 Application code is frozen at `0a746d4`. The author can edit explicitly linked
 original Markdown files. The app remains at http://127.0.0.1:28000 with the
