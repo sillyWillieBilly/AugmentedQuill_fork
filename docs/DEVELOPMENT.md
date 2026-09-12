@@ -22,9 +22,14 @@ frontend explicitly proxies to it. Ctrl+C stops this launch's child processes.
 Runtime files stay under ignored `.local-data/`; tests have their own temporary
 data. These commands neither launch nor reconfigure an inference service.
 
-The existing OpenAI-compatible llama-swap service was discovered at
-http://127.0.0.1:8080/v1. Read its current model list before choosing a model.
-Keep actual provider settings in local runtime data, outside Git.
+The author supplied ModelWarden at `http://127.0.0.1:3758/v1`, model `writer`.
+The isolated app uses it as the writing/chat/editing connection. The route
+returned `deepseek-v4-flash` during verification; a loopback proxy address does
+not establish that inference runs on the local GPU. The earlier llama-swap
+writer request failed because its GPU allocation could not fit.
+Keep actual provider settings in local runtime data, outside Git. In Settings,
+use the OpenAI-compatible base URL ending in `/v1` and choose the desired roles.
+No inference service is restarted by this checkout's launch helpers.
 
 ## Validation
 
@@ -34,15 +39,31 @@ Start with the tests relevant to a change. Before completing the build, run:
 venv/bin/ruff check .
 venv/bin/black --check .
 venv/bin/python -m pytest
-venv/bin/python tools/enforce_code_hygiene.py .
-venv/bin/python tools/check_copyright.py .
 npm --prefix src/frontend run lint
 npm --prefix src/frontend run typecheck
 npm --prefix src/frontend run test
 npm --prefix src/frontend run build
 npm --prefix src/frontend run check:generated-types
+src/frontend/node_modules/.bin/prettier --check '**/*.{ts,tsx,js,jsx,mjs,cjs,json,css,scss,md,html}'
 ```
+
+`tools/enforce_code_hygiene.py` is an upstream bulk rewriting utility, not a
+validation command; it rewrites headers across the tree. The earlier upstream
+guidance also referenced a nonexistent `tools/check_copyright.py`. Preserve
+license/purpose headers during edits and use the actual checks in
+`.github/workflows/code-quality.yml`.
 
 The browser fixture in `src/frontend/playwright.docs.config.ts` uses isolated data
 and a mock model. Its pass does not replace the real-model workshop acceptance
 session. Record commands, outcomes and relevant failures in `.dossier/evidence/`.
+
+From `src/frontend`, run the repository browser suites with
+`npm exec -- playwright test --config=playwright.config.ts`, then repeat with
+`playwright.docs.config.ts` and `playwright.fullstack.config.ts`.
+The pipeline additionally runs `pip-audit --ignore-vuln CVE-2026-4539
+--ignore-vuln CVE-2026-3219`; npm audit runs when dependencies change.
+
+Run `make types` after API changes: it exports the current backend schema under
+the isolated runtime paths and regenerates the frontend types. Commit both
+generated files with the API changes. `check:generated-types` verifies that the
+committed generated file matches the schema.

@@ -1,0 +1,14 @@
+[
+  {
+    "source": "chapter-01.md",
+    "sha256": "65feabfc7b6ef15e6c5203860378d302501968dd7671333ced552723678fc21a",
+    "copied_bytes": 59952,
+    "unchanged_after_api_reopen": true
+  },
+  {
+    "source": "chapter-02.md",
+    "sha256": "d445b86fd3020c77f93adb2f54fd86c79c852d07dd2d31c53eb0e84b5a9d7052",
+    "copied_bytes": 35660,
+    "unchanged_after_api_reopen": true
+  }
+]

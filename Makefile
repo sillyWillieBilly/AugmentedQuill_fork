@@ -24,4 +24,4 @@ check:
 	npm --prefix src/frontend run typecheck
 
 types:
-	npm --prefix src/frontend run generate:types
+	bash tools/writer-dev.sh types

@@ -1,0 +1,21 @@
+{
+  "implementation_commit": "717fd14a6a3418600d56bf6506d8e12585aee288",
+  "applied_exact_last_occurrence": true,
+  "applied_sha256": "ffbf5c60cdea8500a2ba65c41f291792d0f75514c9b6edea1c48c352fd4b5990",
+  "canon_unchanged": true,
+  "markers_unicode_and_other_occurrences_preserved": true,
+  "undo_saved_original_bytes": true,
+  "undo_sha256": "67571a595b05f39ee7be290ce8556d4cc337158632243b8c825182429c3fa95d",
+  "redo_saved_applied_bytes": true,
+  "reopened_in_browser_and_api": true,
+  "request_status": 200,
+  "request_duration_ms": 5290,
+  "visible_utf16_range": [
+    28,
+    39
+  ],
+  "raw_utf16_range": [
+    96,
+    107
+  ]
+}

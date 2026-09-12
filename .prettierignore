@@ -3,3 +3,7 @@
 node_modules
 dist
 coverage
+.local-data
+venv
+.venv
+src/frontend/tests/e2e/.test-artifacts

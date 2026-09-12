@@ -1,6 +1,22 @@
 # AugmentedQuill
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/StableLlamaAI/AugmentedQuill/code-quality.yml?branch=develop)](https://github.com/StableLlamaAI/AugmentedQuill/actions)
+This fork adds a precise **Passage workshop**: leave the caret in a sentence or
+select a passage, discuss alternatives with scoped lore, and explicitly apply one
+checked edit with undo and recovery. It also imports and exports SillyTavern World
+Info with a documented compatibility subset.
+
+For this fork, run `make setup` once and `make run` to open
+http://127.0.0.1:28000. Development mode is `make dev` on port 28001. Local projects
+and model settings stay in ignored `.local-data/`.
+
+Start with the [writer guide](docs/WRITER-WORKSPACE.md),
+[fork development commands](docs/DEVELOPMENT.md),
+[lore compatibility](docs/LORE-COMPATIBILITY.md), and
+[manuscript copy importer](docs/MANUSCRIPT_IMPORT.md).
+The [acceptance record](.dossier/evidence/writer-workspace-acceptance.md) identifies
+the tested implementation and distinguishes real-model from mock checks.
+
+[![Upstream build status](https://img.shields.io/github/actions/workflow/status/StableLlamaAI/AugmentedQuill/code-quality.yml?branch=develop)](https://github.com/StableLlamaAI/AugmentedQuill/actions)
 [![License: GPLv3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 ![AugmentedQuill logo](static/images/logo_2048.png)

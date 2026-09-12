@@ -1,0 +1,22 @@
+{
+  "implementation_commit": "717fd14a6a3418600d56bf6506d8e12585aee288",
+  "checked_at_utc": "2026-09-12T13:30:24.913027+00:00",
+  "app_url": "http://127.0.0.1:28000/",
+  "backend_pid": 1793479,
+  "python": "Python 3.12.13",
+  "node": "v24.15.0",
+  "artifacts": {
+    "static/dist/index.html": {
+      "sha256": "76afbb5247f732050ee133aab20cb9a490c60f510de1c274a38a232fe8185f96",
+      "bytes": 1508
+    },
+    "static/dist/assets/index-BUpaaBJ8.js": {
+      "sha256": "e0c15105705a3346b850e8095c872c1217165374c86488687da21fbe88aa8a07",
+      "bytes": 3458096
+    },
+    "static/dist/assets/index-1g_PDp5K.css": {
+      "sha256": "35da4ebcd52c4b86458ff2d4d3303d5da967d1ba62f66cd7b96b6fdfeade07d5",
+      "bytes": 105101
+    }
+  }
+}
