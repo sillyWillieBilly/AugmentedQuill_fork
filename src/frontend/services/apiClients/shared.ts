@@ -11,6 +11,19 @@
 
 const API_BASE = '/api/v1';
 
+/** Structured HTTP failure used by revision-guarded content saves. */
+export class ApiRequestError extends Error {
+  readonly status: number;
+  readonly payload: unknown;
+
+  constructor(message: string, status: number, payload: unknown) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
 /** Helper for the requested value. */
 function endpoint(path: string): string {
   if (path.startsWith('/')) return `${API_BASE}${path}`;
@@ -26,7 +39,10 @@ export function projectEndpoint(projectName: string, path: string): string {
 }
 
 /** Read error message. */
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+async function readErrorDetails(
+  response: Response,
+  fallback: string
+): Promise<{ message: string; payload: unknown }> {
   try {
     const data = (await response.json()) as {
       detail?: unknown;
@@ -34,11 +50,13 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
       error?: unknown;
     };
     const detail = data.detail ?? data.message ?? data.error;
-    if (typeof detail === 'string') return detail;
-    if (detail !== undefined) return JSON.stringify(detail);
-    return fallback;
+    if (typeof detail === 'string') return { message: detail, payload: data };
+    if (detail !== undefined) {
+      return { message: JSON.stringify(detail), payload: data };
+    }
+    return { message: fallback, payload: data };
   } catch {
-    return fallback;
+    return { message: fallback, payload: undefined };
   }
 }
 
@@ -50,7 +68,8 @@ export async function fetchJson<T>(
 ): Promise<T> {
   const response = await fetch(endpoint(path), init);
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, fallbackError));
+    const details = await readErrorDetails(response, fallbackError);
+    throw new ApiRequestError(details.message, response.status, details.payload);
   }
   return response.json() as Promise<T>;
 }
@@ -68,7 +87,8 @@ export async function deleteJson<T = void>(
 ): Promise<T> {
   const response = await fetch(endpoint(path), { method: 'DELETE' });
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, fallbackError));
+    const details = await readErrorDetails(response, fallbackError);
+    throw new ApiRequestError(details.message, response.status, details.payload);
   }
   // 204 No Content (and any other empty body): return undefined cast to T.
   // Callers that pass a non-void T must only do so when the server actually
@@ -89,7 +109,8 @@ export async function fetchBlob(
 ): Promise<Blob> {
   const response = await fetch(endpoint(path), init);
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, fallbackError));
+    const details = await readErrorDetails(response, fallbackError);
+    throw new ApiRequestError(details.message, response.status, details.payload);
   }
   return response.blob();
 }

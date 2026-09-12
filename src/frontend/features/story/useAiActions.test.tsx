@@ -112,9 +112,11 @@ function makeLinkedScene(
 
 describe('useAiActions', () => {
   let patchSceneSpy: ReturnType<typeof vi.spyOn>;
+  let runningAction: Promise<void> | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    runningAction = undefined;
     patchSceneSpy = vi.spyOn(useStoryStore.getState(), 'patchScene');
     vi.mocked(api.scenes.autoLinkScope).mockResolvedValue({
       assignments: [],
@@ -125,7 +127,12 @@ describe('useAiActions', () => {
     useChatStore.getState().setIsProseStreamingFrozen(false);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Cancellation updates loading state before the mocked provider settles.
+    // Drain the actual task before jsdom and the next test are torn down.
+    await act(async () => {
+      await runningAction;
+    });
     patchSceneSpy.mockRestore();
   });
 
@@ -153,7 +160,7 @@ describe('useAiActions', () => {
     });
 
     await act(async () => {
-      void result.current.handleAiAction('chapter', 'extend');
+      runningAction = result.current.handleAiAction('chapter', 'extend');
     });
 
     await waitFor(() => {
@@ -213,7 +220,7 @@ describe('useAiActions', () => {
     const { result } = renderHook(() => useAiActions(makeParams(updateChapter)));
 
     await act(async () => {
-      void result.current.handleAiAction('chapter', 'extend');
+      runningAction = result.current.handleAiAction('chapter', 'extend');
     });
 
     await waitFor(() => expect(result.current.isAiActionLoading).toBe(true));
@@ -418,7 +425,7 @@ describe('useAiActions', () => {
     const { result } = renderHook(() => useAiActions(makeParams(updateChapter)));
 
     await act(async () => {
-      void result.current.handleAiAction('chapter', 'extend');
+      runningAction = result.current.handleAiAction('chapter', 'extend');
     });
 
     await waitFor(() => expect(result.current.isAiActionLoading).toBe(true));
@@ -481,7 +488,7 @@ describe('useAiActions', () => {
     const { result } = renderHook(() => useAiActions(makeParams(updateChapter)));
 
     await act(async () => {
-      void result.current.handleAiAction('chapter', 'extend');
+      runningAction = result.current.handleAiAction('chapter', 'extend');
     });
 
     await waitFor(() => expect(result.current.isAiActionLoading).toBe(true));

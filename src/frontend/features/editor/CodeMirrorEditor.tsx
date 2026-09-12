@@ -587,6 +587,8 @@ export interface CodeMirrorEditorProps {
   language?: string;
   /** Whether to enable browser-native spellcheck */
   spellCheck?: boolean;
+  /** Effective line separator for this document (preserves raw manuscript bytes). */
+  lineSeparator?: string;
   /** Called when the user presses Ctrl+F / Cmd+F inside the editor */
   onOpenSearch?: () => void;
   /**
@@ -634,6 +636,16 @@ export interface CodeMirrorEditorProps {
   isLight?: boolean;
 }
 
+/**
+ * CodeMirror normalizes line endings to LF unless this facet is configured.
+ * Manuscript persistence is byte-sensitive, so retain the source separator
+ * for documents that use one consistently.  A document with no line breaks
+ * needs no override and continues to use CodeMirror's default.
+ */
+function sourceLineSeparator(value: string): string | undefined {
+  return value.match(/\r\n|\r|\n/)?.[0];
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const CodeMirrorEditor = React.forwardRef<
@@ -658,6 +670,7 @@ export const CodeMirrorEditor = React.forwardRef<
       searchHighlightRanges,
       language = 'en',
       spellCheck = false,
+      lineSeparator: lineSeparatorProp,
       onOpenSearch,
       selectionBg,
       highlightColors,
@@ -870,7 +883,9 @@ export const CodeMirrorEditor = React.forwardRef<
     useEffect((): (() => void) | undefined => {
       if (!containerRef.current) return undefined;
 
+      const lineSeparator = lineSeparatorProp ?? sourceLineSeparator(value);
       const extensions: Extension[] = [
+        ...(lineSeparator ? [EditorState.lineSeparator.of(lineSeparator)] : []),
         baseTheme,
         markdownDecorationTheme,
         // drawSelection takes control of selection rendering via
@@ -935,7 +950,10 @@ export const CodeMirrorEditor = React.forwardRef<
             if (isExternalSync) {
               return;
             }
-            const val = update.state.doc.toString();
+            // Text.toString() always joins CodeMirror lines with LF.  Use
+            // sliceDoc() so a configured source separator (for example CRLF)
+            // survives the raw manuscript callback and marker transfer.
+            const val = update.state.sliceDoc();
             lastEmittedRef.current = val;
             const isUndoRedo = update.transactions.some(
               (tx: Transaction) => tx.isUserEvent('undo') || tx.isUserEvent('redo')
@@ -1103,7 +1121,7 @@ export const CodeMirrorEditor = React.forwardRef<
     useLayoutEffect((): void => {
       const view = viewRef.current;
       if (!view) return;
-      const docStr = view.state.doc.toString();
+      const docStr = view.state.sliceDoc();
       // When hideSceneMarkers is true, the editor document is stripped of
       // internal markers while the value prop carries the full content with
       // markers (injected by Editor.tsx via transferInternalMarkers).  Compare

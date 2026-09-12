@@ -24,7 +24,7 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
-import { useStory, StoryDialogs } from '../story/useStory';
+import { useStory, StoryDialogs, type ReloadDocumentResult } from '../story/useStory';
 import { useCurrentWritingUnit } from '../story/useCurrentWritingUnit';
 import { useBrowserHistory } from './useBrowserHistory';
 import type { Chapter, StoryState, WritingUnit, SourcebookEntry } from '../../types';
@@ -51,6 +51,7 @@ export interface StoryMutations {
   deleteChapter: (chapterId: string) => Promise<void>;
   loadStory: (story: StoryState) => void;
   refreshStory: (historyLabel?: string, resetHistory?: boolean) => Promise<void>;
+  reloadDocument: () => Promise<ReloadDocumentResult>;
   updateStoryMetadata: (
     title: string,
     summary: string,
@@ -152,6 +153,7 @@ export function StoryDomainProvider({
     deleteChapter,
     loadStory,
     refreshStory,
+    reloadDocument,
     undo,
     redo,
     undoSteps,
@@ -206,6 +208,7 @@ export function StoryDomainProvider({
       deleteChapter,
       loadStory,
       refreshStory,
+      reloadDocument,
       updateStoryMetadata,
       updateStoryImageSettings,
       undo,
@@ -226,6 +229,7 @@ export function StoryDomainProvider({
       deleteChapter,
       loadStory,
       refreshStory,
+      reloadDocument,
       updateStoryMetadata,
       updateStoryImageSettings,
       undo,

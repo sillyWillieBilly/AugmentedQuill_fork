@@ -77,6 +77,34 @@ describe('chaptersApi', () => {
     );
   });
 
+  it('sends the original revision and filename when guarding a content save', async () => {
+    vi.mocked(putJson).mockResolvedValueOnce({
+      ok: true,
+      id: 2,
+      content: 'New content',
+      revision: 'next',
+      filename: '0002.txt',
+      document_key: 'chapters/0002.txt',
+    });
+
+    await chaptersApi.updateContent(2, 'New content', {
+      expected_revision: 'base',
+      expected_filename: '0002.txt',
+      expected_document_key: 'chapters/0002.txt',
+    });
+
+    expect(putJson).toHaveBeenCalledWith(
+      '/chapters/2/content',
+      {
+        content: 'New content',
+        expected_revision: 'base',
+        expected_filename: '0002.txt',
+        expected_document_key: 'chapters/0002.txt',
+      },
+      'Failed to update chapter content'
+    );
+  });
+
   it('calls PUT /chapters/{id}/title', async () => {
     vi.mocked(putJson).mockResolvedValueOnce({ ok: true });
 

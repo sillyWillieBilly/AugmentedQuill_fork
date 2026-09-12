@@ -38,9 +38,87 @@ import {
 import type { StoryHistoryEntry } from './historyUtils';
 import { useStoryStore, StoryStoreState } from '../../stores/storyStore';
 import { useChatStore } from '../../stores/chatStore';
+import {
+  contentDocumentKey,
+  contentSaveFailure,
+  enqueueContentSave,
+  invalidateContentSaves,
+} from '../../services/contentRevision';
+import { useSaveStatusStore } from '../../stores/saveStatusStore';
+import type { SaveStatus } from '../../stores/saveStatusStore';
 
 /** Maximum number of undo/redo states retained in memory. */
 const MAX_HISTORY = 50;
+
+function recordContentSaveFailure(
+  projectName: string,
+  documentKey: string,
+  error: unknown
+): void {
+  const failure = contentSaveFailure(error);
+  const statusStore = useSaveStatusStore.getState();
+  if (failure?.status === 409) {
+    const currentRevision =
+      typeof failure.payload?.revision === 'string'
+        ? failure.payload.revision
+        : undefined;
+    const filename =
+      typeof failure.payload?.filename === 'string'
+        ? failure.payload.filename
+        : undefined;
+    const currentDocumentKey =
+      typeof failure.payload?.document_key === 'string'
+        ? failure.payload.document_key
+        : undefined;
+    statusStore.setConflict(
+      projectName,
+      documentKey,
+      failure.message,
+      currentRevision,
+      filename,
+      currentDocumentKey
+    );
+    return;
+  }
+  statusStore.setError(
+    projectName,
+    documentKey,
+    failure?.message ?? (error instanceof Error ? error.message : String(error))
+  );
+}
+
+/**
+ * Return the revision captured when this document was loaded.
+ *
+ * Normal prose saves must never turn a missing base into an unconditional
+ * write.  This happens briefly while a chapter is being loaded, and can also
+ * happen with a legacy API double that does not return revision metadata.  A
+ * readable status error lets the editor keep the local buffer and retry after
+ * a successful load/reload.
+ */
+function requireLoadedContentBase(
+  projectName: string,
+  documentKey: string
+): SaveStatus | null {
+  const status =
+    useSaveStatusStore.getState().entries[contentDocumentKey(projectName, documentKey)];
+  if (
+    !status ||
+    status.documentKey !== documentKey ||
+    typeof status.revision !== 'string' ||
+    status.revision.length === 0
+  ) {
+    useSaveStatusStore
+      .getState()
+      .setError(
+        projectName,
+        documentKey,
+        'Cannot save until this document finishes loading with a revision. Reload it and try again.'
+      );
+    return null;
+  }
+  return status;
+}
 
 /**
  * Injectable dialog callbacks for useStory.
@@ -72,6 +150,16 @@ export interface StoryHistoryOption {
   id: string;
   label: string;
   steps: number;
+}
+
+export interface ReloadDocumentResult {
+  ok: boolean;
+  projectName: string;
+  documentKey: string;
+  content?: string;
+  revision?: string;
+  filename?: string;
+  error?: string;
 }
 
 const buildStoryDraft = (
@@ -327,11 +415,14 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
   );
 
   const lastLoadedChapterId = useRef<string | null>(null);
+  const chapterLoadGeneration = useRef(0);
+  const chapterDocumentKeys = useRef<Record<string, string>>({});
   // isChapterLoading is now read from the Zustand store (declared at top of hook).
 
   const refreshStory = useCallback(
     async (historyLabel?: string, resetHistory: boolean = false): Promise<void> => {
       try {
+        chapterLoadGeneration.current += 1;
         const projects = await api.projects.list();
         const currentProject = projects.current || latestStoryRef.current.id;
         if (!currentProject) return;
@@ -357,10 +448,25 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
           );
 
           if (res.story.project_type === 'short-story') {
-            const content = (await projectApi.story.getContent()).content;
+            const contentResponse = await projectApi.story.getContent();
+            const documentKey =
+              contentResponse.document_key ?? contentResponse.filename ?? 'content.md';
+            const filename = contentResponse.filename ?? documentKey;
+            if (typeof contentResponse.revision === 'string') {
+              useSaveStatusStore.getState().setLoaded({
+                projectName: currentProject,
+                documentKey,
+                filename,
+                revision: contentResponse.revision,
+              });
+            }
             newStory = {
               ...newStory,
-              draft: buildStoryDraft(currentProject, res.story, content),
+              draft: {
+                ...buildStoryDraft(currentProject, res.story, contentResponse.content),
+                filename,
+                document_key: documentKey,
+              },
               currentChapterId: null,
             };
           }
@@ -412,6 +518,7 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
   const selectChapter = useCallback((id: string | null): void => {
     const state = useStoryStore.getState();
     if (id !== state.currentChapterId) {
+      chapterLoadGeneration.current += 1;
       lastLoadedChapterId.current = null;
       state.setCurrentChapterId(id);
       state.setStory((prev: StoryState) => ({ ...prev, currentChapterId: id }));
@@ -419,18 +526,213 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
     }
   }, []);
 
+  /**
+   * Explicitly reload the currently selected document after the caller has
+   * preserved any local buffer it wants to recover.  The request is bound to
+   * the project/document captured before the await and is discarded if either
+   * changes while the server is responding.
+   */
+  const reloadDocument = useCallback(async (): Promise<ReloadDocumentResult> => {
+    const capturedStory = latestStoryRef.current;
+    const projectName = capturedStory.id;
+    const capturedChapterId = useStoryStore.getState().currentChapterId;
+    const capturedChapter = capturedStory.chapters.find(
+      (chapter: Chapter): boolean => chapter.id === capturedChapterId
+    );
+    const isDraft = capturedStory.projectType === 'short-story';
+    const capturedDocumentKey = isDraft
+      ? (capturedStory.draft?.document_key ??
+        capturedStory.draft?.filename ??
+        'content.md')
+      : capturedChapter
+        ? (chapterDocumentKeys.current[`${projectName}:${capturedChapter.id}`] ??
+          capturedChapter.document_key ??
+          capturedChapter.filename ??
+          `chapter:${capturedChapter.id}`)
+        : '';
+
+    if (!projectName || !capturedDocumentKey || (!isDraft && !capturedChapter)) {
+      return {
+        ok: false,
+        projectName,
+        documentKey: capturedDocumentKey,
+        error: 'The selected document is unavailable for reload.',
+      };
+    }
+
+    const saveKey = contentDocumentKey(projectName, capturedDocumentKey);
+    const saveStatus = useSaveStatusStore.getState().entries[saveKey];
+    if (saveStatus?.state === 'saving') {
+      return {
+        ok: false,
+        projectName,
+        documentKey: capturedDocumentKey,
+        error: 'A save is still in progress; reload after it finishes.',
+      };
+    }
+    // Prevent a queued pre-reload save from starting while this GET is in
+    // flight.  An already running save is rejected above because its status
+    // is `saving`; a noncooperative filesystem write still needs the backend
+    // revision guard to decide whether it may commit.
+    invalidateContentSaves(saveKey);
+
+    let response:
+      | Awaited<ReturnType<ReturnType<typeof api.forProject>['story']['getContent']>>
+      | Awaited<ReturnType<ReturnType<typeof api.forProject>['chapters']['get']>>;
+    try {
+      const projectApi = api.forProject(projectName);
+      if (isDraft) {
+        response = await projectApi.story.getContent();
+      } else {
+        const getChapter =
+          typeof projectApi.chapters.get === 'function'
+            ? projectApi.chapters.get
+            : api.chapters.get;
+        response = await getChapter(Number(capturedChapterId));
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        projectName,
+        documentKey: capturedDocumentKey,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    const responseDocumentKey = response.document_key;
+    const responseRevision = response.revision;
+    if (
+      typeof responseDocumentKey !== 'string' ||
+      typeof responseRevision !== 'string' ||
+      responseDocumentKey !== capturedDocumentKey
+    ) {
+      return {
+        ok: false,
+        projectName,
+        documentKey: capturedDocumentKey,
+        error: 'The document identity changed while it was being reloaded.',
+      };
+    }
+
+    const currentStory = latestStoryRef.current;
+    const currentChapterId = useStoryStore.getState().currentChapterId;
+    const currentChapter = currentStory.chapters.find(
+      (chapter: Chapter): boolean => chapter.id === currentChapterId
+    );
+    const currentDocumentKey = isDraft
+      ? (currentStory.draft?.document_key ??
+        currentStory.draft?.filename ??
+        'content.md')
+      : currentChapter
+        ? (chapterDocumentKeys.current[`${projectName}:${currentChapter.id}`] ??
+          currentChapter.document_key ??
+          currentChapter.filename ??
+          `chapter:${currentChapter.id}`)
+        : '';
+    if (
+      currentStory.id !== projectName ||
+      currentChapterId !== capturedChapterId ||
+      currentDocumentKey !== capturedDocumentKey ||
+      (!isDraft && !currentChapter)
+    ) {
+      return {
+        ok: false,
+        projectName,
+        documentKey: capturedDocumentKey,
+        error: 'The project or document changed while it was being reloaded.',
+      };
+    }
+
+    const filename = response.filename;
+    useSaveStatusStore.getState().setLoaded({
+      projectName,
+      documentKey: capturedDocumentKey,
+      filename,
+      revision: responseRevision,
+    });
+
+    const reloadedStory: StoryState = isDraft
+      ? {
+          ...currentStory,
+          draft: currentStory.draft
+            ? {
+                ...currentStory.draft,
+                content: response.content,
+                filename,
+                document_key: responseDocumentKey,
+              }
+            : currentStory.draft,
+        }
+      : {
+          ...currentStory,
+          chapters: currentStory.chapters.map((chapter: Chapter): Chapter =>
+            chapter.id === capturedChapterId
+              ? {
+                  ...chapter,
+                  content: response.content,
+                  filename,
+                  document_key: responseDocumentKey,
+                }
+              : chapter
+          ),
+        };
+    if (!isDraft) {
+      chapterDocumentKeys.current[`${projectName}:${capturedChapterId}`] =
+        responseDocumentKey;
+    }
+    pushStateRef.current(reloadedStory, 'Reload document', true);
+    return {
+      ok: true,
+      projectName,
+      documentKey: responseDocumentKey,
+      content: response.content,
+      revision: responseRevision,
+      filename,
+    };
+  }, []);
+
   // Load chapter content lazily so list refreshes stay responsive.
   useEffect((): void => {
     if (currentChapterId && currentChapterId !== lastLoadedChapterId.current) {
       useStoryStore.setState({ isChapterLoading: true });
+      const selectedChapterId = currentChapterId;
+      const projectName = latestStoryRef.current.id;
+      const loadGeneration = ++chapterLoadGeneration.current;
       const loadContent = async (): Promise<void> => {
         try {
-          const res = await api.chapters.get(Number(currentChapterId));
-          lastLoadedChapterId.current = currentChapterId;
+          const scopedChaptersApi = api.forProject(projectName).chapters;
+          // Keep old injected API doubles working while production saves use
+          // the project-bound client captured before the request starts.
+          const getChapter =
+            typeof scopedChaptersApi.get === 'function'
+              ? scopedChaptersApi.get
+              : api.chapters.get;
+          const res = await getChapter(Number(selectedChapterId));
+          if (
+            loadGeneration !== chapterLoadGeneration.current ||
+            useStoryStore.getState().currentChapterId !== selectedChapterId ||
+            latestStoryRef.current.id !== projectName
+          ) {
+            return;
+          }
+          const documentKey =
+            res.document_key ?? res.filename ?? `chapter:${selectedChapterId}`;
+          const filename = res.filename ?? documentKey;
+          if (typeof res.revision === 'string') {
+            useSaveStatusStore.getState().setLoaded({
+              projectName,
+              documentKey,
+              filename,
+              revision: res.revision,
+            });
+          }
+          chapterDocumentKeys.current[`${projectName}:${selectedChapterId}`] =
+            documentKey;
+          lastLoadedChapterId.current = selectedChapterId;
           startTransition((): void => {
             useStoryStore.setState((state: StoryStoreState) => {
               const baselineChapter = state.baselineState.chapters.find(
-                (chapter: Chapter): boolean => chapter.id === currentChapterId
+                (chapter: Chapter): boolean => chapter.id === selectedChapterId
               );
               // Only advance the baseline when its content is empty AND there is no
               // pending AI diff.  After an AI tool runs, pushExternalHistoryEntry sets
@@ -445,10 +747,11 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
                 baselineChapter !== undefined &&
                 (baselineChapter.content ?? '') === '';
               const updatedChapters = state.story.chapters.map((c: Chapter): Chapter =>
-                c.id === currentChapterId
+                c.id === selectedChapterId
                   ? {
                       ...c,
                       content: res.content,
+                      filename,
                       notes: res.notes ?? undefined,
                       private_notes: res.private_notes ?? undefined,
                       conflicts: (res.conflicts ?? []) as Conflict[],
@@ -477,7 +780,7 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
                                 ...entry.state,
                                 chapters: entry.state.chapters.map(
                                   (chapter: Chapter): Chapter =>
-                                    chapter.id === currentChapterId
+                                    chapter.id === selectedChapterId
                                       ? { ...chapter, content: res.content }
                                       : chapter
                                 ),
@@ -496,7 +799,7 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
                       ...state.baselineState,
                       chapters: state.baselineState.chapters.map(
                         (chapter: Chapter): Chapter =>
-                          chapter.id === currentChapterId
+                          chapter.id === selectedChapterId
                             ? {
                                 ...chapter,
                                 content: res.content,
@@ -517,7 +820,9 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
           });
         } catch (e) {
           console.error('Failed to load chapter content', e);
-          startTransition(() => useStoryStore.setState({ isChapterLoading: false }));
+          if (loadGeneration === chapterLoadGeneration.current) {
+            startTransition(() => useStoryStore.setState({ isChapterLoading: false }));
+          }
         }
       };
       loadContent();
@@ -541,10 +846,29 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
           let newStory = buildInitialStoryState(projects.current, res.story, chapters);
 
           if (res.story.project_type === 'short-story') {
-            const content = (await projectApi.story.getContent()).content;
+            const contentResponse = await projectApi.story.getContent();
+            const documentKey =
+              contentResponse.document_key ?? contentResponse.filename ?? 'content.md';
+            const filename = contentResponse.filename ?? documentKey;
+            if (typeof contentResponse.revision === 'string') {
+              useSaveStatusStore.getState().setLoaded({
+                projectName: projects.current,
+                documentKey,
+                filename,
+                revision: contentResponse.revision,
+              });
+            }
             newStory = {
               ...newStory,
-              draft: buildStoryDraft(projects.current, res.story, content),
+              draft: {
+                ...buildStoryDraft(
+                  projects.current,
+                  res.story,
+                  contentResponse.content
+                ),
+                filename,
+                document_key: documentKey,
+              },
               currentChapterId: null,
             };
           }
@@ -593,6 +917,11 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
       language?: string
     ): Promise<void> => {
       const story = latestStoryRef.current;
+      const projectApi = api.forProject(story.id);
+      const metadataClient =
+        typeof projectApi.story.updateMetadata === 'function'
+          ? projectApi.story
+          : api.story;
       const newState = {
         ...story,
         title,
@@ -620,7 +949,7 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
       );
 
       try {
-        await api.story.updateMetadata({
+        await metadataClient.updateMetadata({
           title,
           summary,
           tags,
@@ -646,6 +975,14 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
     ): Promise<void> => {
       const story = latestStoryRef.current;
       if (!story.draft) return;
+      const projectName = story.id;
+      const projectApi = api.forProject(projectName);
+      const storyClient =
+        typeof projectApi.story.updateContent === 'function'
+          ? projectApi.story
+          : (api.story as typeof projectApi.story);
+      const documentKey =
+        story.draft.document_key ?? story.draft.filename ?? 'content.md';
 
       const newState: StoryState = {
         ...story,
@@ -673,7 +1010,41 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
 
       try {
         if (partial.content !== undefined) {
-          await api.story.updateContent(partial.content);
+          const loadedBase = requireLoadedContentBase(projectName, documentKey);
+          if (loadedBase) {
+            await enqueueContentSave(
+              contentDocumentKey(projectName, documentKey),
+              async (): Promise<void> => {
+                const status = requireLoadedContentBase(projectName, documentKey);
+                if (!status) return;
+                // A conflict is sticky until an explicit reload establishes a
+                // new revision.  Keep the draft content and do not guess a base.
+                if (status.state === 'conflict') return;
+                useSaveStatusStore.getState().setSaving(projectName, documentKey);
+                try {
+                  const response = await storyClient.updateContent(
+                    partial.content as string,
+                    {
+                      expected_revision: status.revision,
+                      expected_filename: status.filename ?? story.draft?.filename,
+                      expected_document_key: documentKey,
+                    }
+                  );
+                  useSaveStatusStore
+                    .getState()
+                    .setSaved(
+                      projectName,
+                      documentKey,
+                      response.revision,
+                      response.filename
+                    );
+                } catch (error) {
+                  recordContentSaveFailure(projectName, documentKey, error);
+                  throw error;
+                }
+              }
+            );
+          }
         }
 
         if (
@@ -682,7 +1053,11 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
           partial.notes !== undefined ||
           partial.private_notes !== undefined
         ) {
-          await api.story.updateMetadata({
+          const metadataClient =
+            typeof projectApi.story.updateMetadata === 'function'
+              ? projectApi.story
+              : (api.story as typeof projectApi.story);
+          await metadataClient.updateMetadata({
             title: partial.title ?? story.title,
             summary: partial.summary ?? story.summary,
             tags: story.styleTags,
@@ -735,6 +1110,12 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
       // For all other cases, also use the ref now that updateChapter is a stable
       // useCallback — the ref is always current since it is updated on every render.
       const currentStory = latestStoryRef.current;
+      const projectName = currentStory.id;
+      const projectApi = api.forProject(projectName);
+      const chaptersClient =
+        typeof projectApi.chapters.updateContent === 'function'
+          ? projectApi.chapters
+          : (api.chapters as typeof projectApi.chapters);
 
       const chapter = currentStory.chapters.find(
         (ch: Chapter): boolean => ch.id === id
@@ -778,12 +1159,53 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
 
       try {
         const numId = Number(id);
-        if (partial.content !== undefined)
-          await api.chapters.updateContent(numId, partial.content);
+        if (partial.content !== undefined) {
+          const documentKey =
+            chapterDocumentKeys.current[`${projectName}:${id}`] ??
+            chapter.document_key ??
+            chapter.filename ??
+            `chapter:${id}`;
+          const loadedBase = requireLoadedContentBase(projectName, documentKey);
+          if (loadedBase) {
+            await enqueueContentSave(
+              contentDocumentKey(projectName, documentKey),
+              async (): Promise<void> => {
+                const status = requireLoadedContentBase(projectName, documentKey);
+                if (!status) return;
+                // Keep a revision conflict sticky until an explicit chapter
+                // reload.  This leaves the newer local editor content intact.
+                if (status.state === 'conflict') return;
+                useSaveStatusStore.getState().setSaving(projectName, documentKey);
+                try {
+                  const response = await chaptersClient.updateContent(
+                    numId,
+                    partial.content as string,
+                    {
+                      expected_revision: status.revision,
+                      expected_filename: status.filename ?? chapter.filename,
+                      expected_document_key: documentKey,
+                    }
+                  );
+                  useSaveStatusStore
+                    .getState()
+                    .setSaved(
+                      projectName,
+                      documentKey,
+                      response.revision,
+                      response.filename
+                    );
+                } catch (error) {
+                  recordContentSaveFailure(projectName, documentKey, error);
+                  throw error;
+                }
+              }
+            );
+          }
+        }
         if (partial.title !== undefined)
-          await api.chapters.updateTitle(numId, partial.title);
+          await chaptersClient.updateTitle(numId, partial.title);
         if (partial.summary !== undefined)
-          await api.chapters.updateSummary(numId, partial.summary);
+          await chaptersClient.updateSummary(numId, partial.summary);
         // Metadata fields are managed through dedicated metadata flows to avoid
         // partial writes racing with dialog autosave.
       } catch (e) {
@@ -1105,6 +1527,7 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
     updateBook,
     loadStory,
     refreshStory,
+    reloadDocument,
     undo,
     redo,
     undoSteps: undoStepsStable,

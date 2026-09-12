@@ -1172,6 +1172,66 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/projects/{project_name}/content-recovery': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api List Content Recovery
+     * @description List valid, project-contained before/after recovery records.
+     */
+    get: operations['api_list_content_recovery_api_v1_projects__project_name__content_recovery_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/content-recovery/{recovery_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api Read Content Recovery
+     * @description Read one validated recovery pair without changing the manuscript.
+     */
+    get: operations['api_read_content_recovery_api_v1_projects__project_name__content_recovery__recovery_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/content-recovery/{recovery_id}/restore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Api Restore Content Recovery
+     * @description Restore a selected pair only when the caller's current base matches.
+     */
+    post: operations['api_restore_content_recovery_api_v1_projects__project_name__content_recovery__recovery_id__restore_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/chat': {
     parameters: {
       query?: never;
@@ -1520,6 +1580,151 @@ export interface paths {
      * @description Delete Sourcebook Entry.
      */
     delete: operations['delete_sourcebook_entry_api_v1_projects__project_name__sourcebook__entry_name__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/workshop/discuss': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Api Workshop Discuss
+     * @description Discuss an immutable editor snapshot without project mutation.
+     *
+     *     The route deliberately exposes no tool loop and accepts no provider
+     *     credentials, URL, or arbitrary model request body.  Cancellation bubbles
+     *     through a cancellation watcher so a disconnected request aborts the
+     *     provider task instead of continuing an unnoticed model generation.
+     */
+    post: operations['api_workshop_discuss_api_v1_projects__project_name__workshop_discuss_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/lore/world-info': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api List World Info
+     * @description List imported raw World Info books and their unsupported options.
+     */
+    get: operations['api_list_world_info_api_v1_projects__project_name__lore_world_info_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/lore/world-info/{book_name}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api Get World Info
+     * @description Export a raw World Info book without normalizing unknown fields.
+     */
+    get: operations['api_get_world_info_api_v1_projects__project_name__lore_world_info__book_name__get'];
+    put?: never;
+    /**
+     * Api Import World Info
+     * @description Import a World Info object, retaining all fields and original IDs.
+     */
+    post: operations['api_import_world_info_api_v1_projects__project_name__lore_world_info__book_name__post'];
+    /**
+     * Api Delete World Info
+     * @description Delete an imported World Info book.
+     */
+    delete: operations['api_delete_world_info_api_v1_projects__project_name__lore_world_info__book_name__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/lore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api List Lore
+     * @description List native Sourcebook lore and its explicit status/scope metadata.
+     */
+    get: operations['api_list_lore_api_v1_projects__project_name__lore_get'];
+    put?: never;
+    /**
+     * Api Create Lore
+     * @description Create a native Sourcebook entry with lore metadata.
+     */
+    post: operations['api_create_lore_api_v1_projects__project_name__lore_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/lore/{entry_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api Get Lore
+     * @description Get a native lore entry by its stable ID or current Sourcebook name.
+     */
+    get: operations['api_get_lore_api_v1_projects__project_name__lore__entry_id__get'];
+    /**
+     * Api Update Lore
+     * @description Update Sourcebook content and/or lore metadata without losing its ID.
+     */
+    put: operations['api_update_lore_api_v1_projects__project_name__lore__entry_id__put'];
+    post?: never;
+    /**
+     * Api Delete Lore
+     * @description Delete a native lore entry.
+     */
+    delete: operations['api_delete_lore_api_v1_projects__project_name__lore__entry_id__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/projects/{project_name}/lore/select': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Api Select Lore
+     * @description Return deterministic lore context and an inclusion/exclusion inspector.
+     */
+    post: operations['api_select_lore_api_v1_projects__project_name__lore_select_post'];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -2108,6 +2313,12 @@ export interface components {
     ChapterContentUpdate: {
       /** Content */
       content: string;
+      /** Expected Revision */
+      expected_revision?: string | null;
+      /** Expected Filename */
+      expected_filename?: string | null;
+      /** Expected Document Key */
+      expected_document_key?: string | null;
     };
     /**
      * ChapterCreate
@@ -2145,6 +2356,12 @@ export interface components {
       private_notes: string;
       /** Conflicts */
       conflicts: unknown[];
+      /** Book Id */
+      book_id?: string | null;
+      /** Revision */
+      revision: string;
+      /** Document Key */
+      document_key: string;
     };
     /**
      * ChapterMetadataUpdate
@@ -2183,6 +2400,8 @@ export interface components {
       conflicts: unknown[];
       /** Book Id */
       book_id?: string | null;
+      /** Document Key */
+      document_key?: string | null;
     };
     /**
      * ChapterSummaryUpdate
@@ -2347,6 +2566,101 @@ export interface components {
       ok: boolean;
       /** Detail */
       detail: string;
+    };
+    /**
+     * ContentRecoveryDetail
+     * @description A recovery pair including exact before and after manuscript text.
+     */
+    ContentRecoveryDetail: {
+      /** Recovery Id */
+      recovery_id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'prepared' | 'committed';
+      /** Document Key */
+      document_key: string;
+      /** Filename */
+      filename: string;
+      /** Before Revision */
+      before_revision: string;
+      /** After Revision */
+      after_revision: string;
+      /** Created At */
+      created_at: string;
+      /** Committed At */
+      committed_at?: string | null;
+      /** Before Content */
+      before_content: string;
+      /** After Content */
+      after_content: string;
+    };
+    /**
+     * ContentRecoveryListResponse
+     * @description Response for the project recovery listing.
+     */
+    ContentRecoveryListResponse: {
+      /** Records */
+      records: components['schemas']['ContentRecoverySummary'][];
+    };
+    /**
+     * ContentRecoveryRestoreRequest
+     * @description Explicit restore target and the caller's current checked base.
+     */
+    ContentRecoveryRestoreRequest: {
+      /**
+       * Target
+       * @enum {string}
+       */
+      target: 'before' | 'after';
+      /** Expected Revision */
+      expected_revision: string;
+      /** Expected Document Key */
+      expected_document_key: string;
+      /** Expected Filename */
+      expected_filename?: string | null;
+    };
+    /**
+     * ContentRecoveryRestoreResponse
+     * @description Canonical content returned after a successful restore.
+     */
+    ContentRecoveryRestoreResponse: {
+      /** Ok */
+      ok: boolean;
+      /** Content */
+      content: string;
+      /** Revision */
+      revision: string;
+      /** Filename */
+      filename: string;
+      /** Document Key */
+      document_key: string;
+    };
+    /**
+     * ContentRecoverySummary
+     * @description Validated metadata for one durable content recovery pair.
+     */
+    ContentRecoverySummary: {
+      /** Recovery Id */
+      recovery_id: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'prepared' | 'committed';
+      /** Document Key */
+      document_key: string;
+      /** Filename */
+      filename: string;
+      /** Before Revision */
+      before_revision: string;
+      /** After Revision */
+      after_revision: string;
+      /** Created At */
+      created_at: string;
+      /** Committed At */
+      committed_at?: string | null;
     };
     /**
      * CreateAnnotationRequest
@@ -2518,6 +2832,303 @@ export interface components {
       /** Images */
       images: components['schemas']['ProjectImageInfo'][];
     };
+    /**
+     * LoreActivation
+     * @description Deterministic subset of SillyTavern World Info activation options.
+     */
+    LoreActivation: {
+      /**
+       * Enabled
+       * @default true
+       */
+      enabled: boolean;
+      /**
+       * Constant
+       * @default false
+       */
+      constant: boolean;
+      /** Primary Keys */
+      primary_keys?: string[];
+      /** Secondary Keys */
+      secondary_keys?: string[];
+      /**
+       * Selective Logic
+       * @default AND_ANY
+       * @enum {string}
+       */
+      selective_logic: 'AND_ANY' | 'NOT_ALL' | 'NOT_ANY' | 'AND_ALL';
+      /**
+       * Order
+       * @default 100
+       */
+      order: number;
+      /**
+       * Recursive
+       * @default false
+       */
+      recursive: boolean;
+      /**
+       * Prevent Recursion
+       * @default false
+       */
+      prevent_recursion: boolean;
+      /**
+       * Exclude Recursion
+       * @default false
+       */
+      exclude_recursion: boolean;
+      /** Case Sensitive */
+      case_sensitive?: boolean | null;
+      /** Match Whole Words */
+      match_whole_words?: boolean | null;
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * LoreContextRequest
+     * @description Inputs for the pure context-selection service.
+     */
+    LoreContextRequest: {
+      /**
+       * Scan Text
+       * @default
+       */
+      scan_text: string;
+      scope?: components['schemas']['LoreScope'];
+      /** Budget Tokens */
+      budget_tokens?: number | null;
+      /**
+       * Include Beliefs
+       * @default true
+       */
+      include_beliefs: boolean;
+      /**
+       * Include Proposals
+       * @default false
+       */
+      include_proposals: boolean;
+      /**
+       * Recursive
+       * @default false
+       */
+      recursive: boolean;
+      /**
+       * Max Recursion Steps
+       * @default 0
+       */
+      max_recursion_steps: number;
+    };
+    /**
+     * LoreDecision
+     * @description Inspectable disposition of one candidate entry.
+     */
+    LoreDecision: {
+      /** Entry Id */
+      entry_id: string;
+      /** Included */
+      included: boolean;
+      /** Reason */
+      reason: string;
+      /** Matched Primary */
+      matched_primary?: string[];
+      /** Matched Secondary */
+      matched_secondary?: string[];
+      /**
+       * Estimated Tokens
+       * @default 0
+       */
+      estimated_tokens: number;
+      /**
+       * Priority
+       * @default 0
+       */
+      priority: number;
+      /**
+       * Recursion Step
+       * @default 0
+       */
+      recursion_step: number;
+    };
+    /**
+     * LoreEntry
+     * @description A native or imported lore entry exposed to the Workshop.
+     */
+    LoreEntry: {
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /**
+       * Kind
+       * @default other
+       */
+      kind: string;
+      /** @default canon */
+      status: components['schemas']['LoreStatus'];
+      /**
+       * Description
+       * @default
+       */
+      description: string;
+      /** Aliases */
+      aliases?: string[];
+      /** Relations */
+      relations?: {
+        [key: string]: unknown;
+      }[];
+      /** Sources */
+      sources?: unknown[];
+      scope?: components['schemas']['LoreScope'];
+      activation?: components['schemas']['LoreActivation'];
+      /** Belief Actor */
+      belief_actor?: string | null;
+      /** Book */
+      book?: string | null;
+      /** Raw Record */
+      raw_record?: {
+        [key: string]: unknown;
+      } | null;
+      /** Raw Fields */
+      raw_fields?: {
+        [key: string]: unknown;
+      };
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * LoreEntryCreate
+     * @description Create a native Sourcebook lore entry.
+     */
+    LoreEntryCreate: {
+      /** Name */
+      name: string;
+      /**
+       * Kind
+       * @default other
+       */
+      kind: string;
+      /** @default proposal */
+      status: components['schemas']['LoreStatus'];
+      /**
+       * Description
+       * @default
+       */
+      description: string;
+      /** Aliases */
+      aliases?: string[];
+      /** Relations */
+      relations?: {
+        [key: string]: unknown;
+      }[];
+      /** Sources */
+      sources?: unknown[];
+      scope?: components['schemas']['LoreScope'];
+      activation?: components['schemas']['LoreActivation'];
+      /** Belief Actor */
+      belief_actor?: string | null;
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * LoreEntryUpdate
+     * @description Partial update for native lore metadata and Sourcebook content.
+     */
+    LoreEntryUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Kind */
+      kind?: string | null;
+      status?: components['schemas']['LoreStatus'] | null;
+      /** Description */
+      description?: string | null;
+      /** Aliases */
+      aliases?: string[] | null;
+      /** Relations */
+      relations?:
+        | {
+            [key: string]: unknown;
+          }[]
+        | null;
+      /** Sources */
+      sources?: unknown[] | null;
+      scope?: components['schemas']['LoreScope'] | null;
+      activation?: components['schemas']['LoreActivation'] | null;
+      /** Belief Actor */
+      belief_actor?: string | null;
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * LoreScope
+     * @description Explicit scope in which a lore entry is applicable.
+     *
+     *     A missing field means that the entry is unrestricted at that level.  Bounds
+     *     are inclusive and are useful for entries that become true only after a
+     *     chapter or scene.  Viewpoint and timeline are deliberate metadata filters;
+     *     they do not attempt to infer fictional truth.
+     */
+    LoreScope: {
+      /** Book Id */
+      book_id?: string | null;
+      /** Chapter Id */
+      chapter_id?: string | number | null;
+      /** Chapter Start */
+      chapter_start?: number | null;
+      /** Chapter End */
+      chapter_end?: number | null;
+      /** Scene Id */
+      scene_id?: string | number | null;
+      /** Scene Start */
+      scene_start?: number | null;
+      /** Scene End */
+      scene_end?: number | null;
+      /** Viewpoint */
+      viewpoint?: string | null;
+      /** Timeline Id */
+      timeline_id?: string | null;
+      /** Timeline Position */
+      timeline_position?: number | null;
+      /** Timeline Start */
+      timeline_start?: number | null;
+      /** Timeline End */
+      timeline_end?: number | null;
+    } & {
+      [key: string]: unknown;
+    };
+    /**
+     * LoreSelectionResult
+     * @description Selected prompt material plus every relevant exclusion explanation.
+     */
+    LoreSelectionResult: {
+      /** Selected */
+      selected?: components['schemas']['LoreEntry'][];
+      /** Decisions */
+      decisions?: components['schemas']['LoreDecision'][];
+      /**
+       * Context Text
+       * @default
+       */
+      context_text: string;
+      /**
+       * Estimated Tokens
+       * @default 0
+       */
+      estimated_tokens: number;
+      /** Budget Tokens */
+      budget_tokens?: number | null;
+      /** Budget Warning */
+      budget_warning?: string | null;
+      /** Warnings */
+      warnings?: string[];
+      /** Unsupported Options */
+      unsupported_options?: string[];
+    };
+    /**
+     * LoreStatus
+     * @description Editorial status of a lore assertion.
+     * @enum {string}
+     */
+    LoreStatus: 'canon' | 'belief' | 'proposal';
     /**
      * MachineConfigResponse
      * @description Response body for ``GET /api/v1/machine``.
@@ -3788,6 +4399,10 @@ export interface components {
       creates_new_timeline: boolean;
       /** Timeline Id */
       timeline_id?: string | null;
+      /** Lore */
+      lore?: {
+        [key: string]: unknown;
+      } | null;
     };
     /**
      * SourcebookEntryCreate
@@ -3943,6 +4558,12 @@ export interface components {
       ok: boolean;
       /** Content */
       content: string;
+      /** Revision */
+      revision: string;
+      /** Filename */
+      filename: string;
+      /** Document Key */
+      document_key: string;
     };
     /**
      * StoryLLMPrefs
@@ -4114,6 +4735,270 @@ export interface components {
        */
       ok: boolean;
       view_state?: components['schemas']['ViewStatePayload'] | null;
+    };
+    /**
+     * WorkshopAlternative
+     * @description One explicitly reviewable replacement proposal.
+     */
+    WorkshopAlternative: {
+      /** Id */
+      id: string;
+      /** Label */
+      label: string;
+      /** Replacement */
+      replacement: string;
+    };
+    /**
+     * WorkshopBudgetEstimate
+     * @description Character and token estimates exposed in the context inspector.
+     */
+    WorkshopBudgetEstimate: {
+      /** System Chars */
+      system_chars: number;
+      /** History Chars */
+      history_chars: number;
+      /** Target Chars */
+      target_chars: number;
+      /** Lore Chars */
+      lore_chars: number;
+      /** Total Chars */
+      total_chars: number;
+      /** Context Limit Tokens */
+      context_limit_tokens: number;
+      /** Context Budget Tokens */
+      context_budget_tokens: number;
+      /** Estimated Prompt Tokens */
+      estimated_prompt_tokens: number;
+      /** Output Reserve Tokens */
+      output_reserve_tokens: number;
+      /** Output Tokens */
+      output_tokens: number;
+    };
+    /**
+     * WorkshopContextBudget
+     * @description Caller-selectable limits, each bounded by server safety caps.
+     */
+    WorkshopContextBudget: {
+      /**
+       * Max History Messages
+       * @default 8
+       */
+      max_history_messages: number;
+      /**
+       * Max Context Chars
+       * @default 12000
+       */
+      max_context_chars: number;
+      /** Context Tokens */
+      context_tokens?: number | null;
+      /**
+       * Max Lore Entries
+       * @default 12
+       */
+      max_lore_entries: number;
+      /**
+       * Max Lore Chars
+       * @default 8000
+       */
+      max_lore_chars: number;
+      /**
+       * Output Tokens
+       * @default 1024
+       */
+      output_tokens: number;
+    };
+    /**
+     * WorkshopContextInspector
+     * @description Auditable view of exactly what the provider received.
+     */
+    WorkshopContextInspector: {
+      /** Messages */
+      messages: components['schemas']['WorkshopInspectorMessage'][];
+      /** Selected Lore */
+      selected_lore?: {
+        [key: string]: unknown;
+      }[];
+      /** Excluded Lore */
+      excluded_lore?: components['schemas']['WorkshopExcludedLore'][];
+      /** Lore Decisions */
+      lore_decisions?: components['schemas']['WorkshopLoreDecision'][];
+      /** Unsupported Options */
+      unsupported_options?: string[];
+      budget: components['schemas']['WorkshopBudgetEstimate'];
+      /** Warnings */
+      warnings?: string[];
+    };
+    /**
+     * WorkshopDiscussRequest
+     * @description Request to discuss an exact manuscript target without mutating it.
+     */
+    WorkshopDiscussRequest: {
+      target: components['schemas']['WorkshopTargetSnapshot'];
+      /** Messages */
+      messages?: components['schemas']['WorkshopMessage'][];
+      /** Model Name */
+      model_name?: string | null;
+      /**
+       * Model Type
+       * @default CHAT
+       * @enum {string}
+       */
+      model_type: 'CHAT' | 'WRITING';
+      /** Author Viewpoint */
+      author_viewpoint?: string | null;
+      /** Timeline */
+      timeline?: string | null;
+      /** Timeline Position */
+      timeline_position?: number | null;
+      budget?: components['schemas']['WorkshopContextBudget'];
+      /** Lore Query */
+      lore_query?: string | null;
+    };
+    /**
+     * WorkshopDiscussResponse
+     * @description Non-mutating Workshop result and review metadata.
+     */
+    WorkshopDiscussResponse: {
+      /** Discussion */
+      discussion: string;
+      /** Alternatives */
+      alternatives: components['schemas']['WorkshopAlternative'][];
+      /** Target Id */
+      target_id: string;
+      /** Fingerprint */
+      fingerprint: string;
+      context: components['schemas']['WorkshopContextInspector'];
+    };
+    /**
+     * WorkshopExcludedLore
+     * @description Why one candidate lore entry was omitted from the model context.
+     */
+    WorkshopExcludedLore: {
+      /** Id */
+      id: string;
+      /** Reason */
+      reason: string;
+    };
+    /**
+     * WorkshopInspectorMessage
+     * @description A bounded message exactly as sent to the provider for inspection.
+     */
+    WorkshopInspectorMessage: {
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'system' | 'user' | 'assistant';
+      /** Content */
+      content: string;
+    };
+    /**
+     * WorkshopLoreDecision
+     * @description One deterministic lore selector disposition for the inspector.
+     */
+    WorkshopLoreDecision: {
+      /** Entry Id */
+      entry_id: string;
+      /** Included */
+      included: boolean;
+      /** Reason */
+      reason: string;
+      /** Matched Primary */
+      matched_primary?: string[];
+      /** Matched Secondary */
+      matched_secondary?: string[];
+      /**
+       * Estimated Tokens
+       * @default 0
+       */
+      estimated_tokens: number;
+      /**
+       * Priority
+       * @default 0
+       */
+      priority: number;
+      /**
+       * Recursion Step
+       * @default 0
+       */
+      recursion_step: number;
+    };
+    /**
+     * WorkshopMessage
+     * @description A bounded prior Workshop conversation turn.
+     *
+     *     Assistant turns are serialized response objects on the next request, so
+     *     their limit must be larger than the author's 8,000-character input field.
+     *     The service still enforces an aggregate response cap before returning a
+     *     turn, keeping this per-message allowance finite.
+     */
+    WorkshopMessage: {
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'system' | 'user' | 'assistant';
+      /** Content */
+      content: string;
+    };
+    /**
+     * WorkshopTargetSnapshot
+     * @description One immutable, marker-inclusive editor snapshot and checked range.
+     */
+    WorkshopTargetSnapshot: {
+      /** Id */
+      id?: string | null;
+      /** Kind */
+      kind?: ('selection' | 'sentence' | 'paragraph') | null;
+      /** Project Id */
+      project_id: string;
+      /** Document Id */
+      document_id: string;
+      /** Document Key */
+      document_key: string;
+      /** Book Id */
+      book_id?: string | null;
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: 'chapter' | 'story';
+      /**
+       * Chapter Title
+       * @default
+       */
+      chapter_title: string;
+      /** Content */
+      content: string;
+      /** From */
+      from: number;
+      /** To */
+      to: number;
+      /** Rawfrom */
+      rawFrom: number;
+      /** Rawto */
+      rawTo: number;
+      /** Original Text */
+      original_text: string;
+      /** Fingerprint */
+      fingerprint: string;
+      /**
+       * Context Before
+       * @default
+       */
+      context_before: string;
+      /**
+       * Context After
+       * @default
+       */
+      context_after: string;
+      /** Scene Id */
+      scene_id?: string | null;
+      /**
+       * Language
+       * @default en
+       */
+      language: string;
     };
     /**
      * OkResponse
@@ -6055,6 +6940,108 @@ export interface operations {
       };
     };
   };
+  api_list_content_recovery_api_v1_projects__project_name__content_recovery_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ContentRecoveryListResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_read_content_recovery_api_v1_projects__project_name__content_recovery__recovery_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        recovery_id: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ContentRecoveryDetail'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_restore_content_recovery_api_v1_projects__project_name__content_recovery__recovery_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        recovery_id: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ContentRecoveryRestoreRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ContentRecoveryRestoreResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   api_get_chat_api_v1_chat_get: {
     parameters: {
       query?: never;
@@ -6655,6 +7642,398 @@ export interface operations {
         };
         content: {
           'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_workshop_discuss_api_v1_projects__project_name__workshop_discuss_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WorkshopDiscussRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorkshopDiscussResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_list_world_info_api_v1_projects__project_name__lore_world_info_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          }[];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_get_world_info_api_v1_projects__project_name__lore_world_info__book_name__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        book_name: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_import_world_info_api_v1_projects__project_name__lore_world_info__book_name__post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        book_name: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': {
+          [key: string]: unknown;
+        };
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_delete_world_info_api_v1_projects__project_name__lore_world_info__book_name__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        book_name: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: boolean;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_list_lore_api_v1_projects__project_name__lore_get: {
+    parameters: {
+      query?: {
+        query?: string | null;
+      };
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoreEntry'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_create_lore_api_v1_projects__project_name__lore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoreEntryCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoreEntry'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_get_lore_api_v1_projects__project_name__lore__entry_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoreEntry'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_update_lore_api_v1_projects__project_name__lore__entry_id__put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoreEntryUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoreEntry'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_delete_lore_api_v1_projects__project_name__lore__entry_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        entry_id: string;
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: boolean;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_select_lore_api_v1_projects__project_name__lore_select_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoreContextRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoreSelectionResult'];
         };
       };
       /** @description Validation Error */

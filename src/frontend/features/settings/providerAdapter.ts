@@ -63,6 +63,16 @@ const toBooleanWithDefault = (value: unknown, fallback: boolean): boolean =>
 
 const normalizeNgram = (value: unknown): 3 | 4 => (value === 4 ? 4 : 3);
 
+const normalizeLoopGuardMinRepeats = (value: unknown): number => {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric >= 2 && numeric <= 8 ? numeric : 3;
+};
+
+const normalizeLoopGuardMaxRegens = (value: unknown): number => {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric >= 0 && numeric <= 3 ? numeric : 1;
+};
+
 export const machineModelToProvider = (
   model: MachineModelConfig,
   fallbackProvider: LLMConfig
@@ -115,13 +125,11 @@ export const machineModelToProvider = (
       true
     ),
     suggestLoopGuardNgram: normalizeNgram(model.suggest_loop_guard_ngram),
-    suggestLoopGuardMinRepeats: toNumberWithDefault(
-      model.suggest_loop_guard_min_repeats,
-      3
+    suggestLoopGuardMinRepeats: normalizeLoopGuardMinRepeats(
+      model.suggest_loop_guard_min_repeats
     ),
-    suggestLoopGuardMaxRegens: toNumberWithDefault(
-      model.suggest_loop_guard_max_regens,
-      1
+    suggestLoopGuardMaxRegens: normalizeLoopGuardMaxRegens(
+      model.suggest_loop_guard_max_regens
     ),
     prompts: normalizeProviderPrompts(model.prompt_overrides, fallbackProvider.prompts),
   };
@@ -150,7 +158,11 @@ export const providerToMachineModel = (provider: LLMConfig): MachineModelConfig 
   supports_function_calling: provider.supportsFunctionCalling ?? undefined,
   suggest_loop_guard_enabled: provider.suggestLoopGuardEnabled ?? true,
   suggest_loop_guard_ngram: provider.suggestLoopGuardNgram ?? 3,
-  suggest_loop_guard_min_repeats: provider.suggestLoopGuardMinRepeats ?? 3,
-  suggest_loop_guard_max_regens: provider.suggestLoopGuardMaxRegens ?? 1,
+  suggest_loop_guard_min_repeats: normalizeLoopGuardMinRepeats(
+    provider.suggestLoopGuardMinRepeats
+  ),
+  suggest_loop_guard_max_regens: normalizeLoopGuardMaxRegens(
+    provider.suggestLoopGuardMaxRegens
+  ),
   prompt_overrides: toPromptOverrides(provider.prompts),
 });

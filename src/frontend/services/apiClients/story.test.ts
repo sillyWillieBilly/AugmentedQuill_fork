@@ -120,6 +120,37 @@ describe('storyApi', () => {
     );
   });
 
+  it('sends the original revision and filename when guarding a draft save', async () => {
+    vi.mocked(fetchJson).mockResolvedValueOnce({
+      ok: true,
+      content: 'Draft',
+      revision: 'next',
+      filename: 'draft.md',
+      document_key: 'draft.md',
+    });
+
+    await storyApi.updateContent('Draft', {
+      expected_revision: 'base',
+      expected_filename: 'draft.md',
+      expected_document_key: 'draft.md',
+    });
+
+    expect(fetchJson).toHaveBeenCalledWith(
+      '/story/content',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: 'Draft',
+          expected_revision: 'base',
+          expected_filename: 'draft.md',
+          expected_document_key: 'draft.md',
+        }),
+      },
+      'Failed to update story content'
+    );
+  });
+
   it('calls POST /story/sourcebook/relevance', async () => {
     vi.mocked(fetchJson).mockResolvedValueOnce({ relevant: ['A', 'B'] });
 

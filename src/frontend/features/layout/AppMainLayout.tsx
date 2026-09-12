@@ -667,6 +667,7 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
                           language={editorControls.storyLanguage || 'en'}
                           viewMode={viewMode}
                           onChange={editorControls.updateChapter}
+                          onReloadContent={editorControls.onReloadContent}
                           suggestionControls={{
                             continuations: suggestionControls.continuations,
                             suggestionMode: suggestionControls.suggestionMode,
@@ -748,6 +749,7 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
                         language={editorControls.storyLanguage || 'en'}
                         viewMode={viewMode}
                         onChange={editorControls.updateChapter}
+                        onReloadContent={editorControls.onReloadContent}
                         suggestionControls={{
                           continuations: suggestionControls.continuations,
                           suggestionMode: suggestionControls.suggestionMode,
@@ -872,6 +874,7 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
 
         <AppChatPanel
           chatControls={chatControls}
+          editorRef={editorRef}
           currentTheme={currentTheme}
           storyLanguage={storyLanguage ?? 'en'}
         />

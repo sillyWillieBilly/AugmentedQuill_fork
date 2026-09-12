@@ -15,7 +15,7 @@
  */
 
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import { DEMO_PROJECT, gotoApp, openSidebar } from './support/helpers';
+import { DEMO_PROJECT, gotoApp, openProjectChat, openSidebar } from './support/helpers';
 
 /** The chat composer input (labeled in the UI). */
 function chatComposer(page: Page): Locator {
@@ -39,6 +39,7 @@ test.describe('Docs E2E harness smoke', () => {
 
   test('chat streams a plain text response', async ({ page }: { page: Page }) => {
     await gotoApp(page, DEMO_PROJECT);
+    await openProjectChat(page);
 
     const composer = chatComposer(page);
     await composer.click();
@@ -59,6 +60,7 @@ test.describe('Docs E2E harness smoke', () => {
   }) => {
     await gotoApp(page, DEMO_PROJECT);
     await openSidebar(page);
+    await openProjectChat(page);
 
     const composer = chatComposer(page);
     await composer.click();

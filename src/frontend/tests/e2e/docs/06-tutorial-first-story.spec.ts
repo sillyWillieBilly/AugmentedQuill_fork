@@ -14,7 +14,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { gotoApp, openSidebar } from './support/helpers';
+import { gotoApp, openProjectChat, openSidebar } from './support/helpers';
 
 test.describe('Tutorial: Writing Your First Story (happy path)', () => {
   test('create a project via chat and switch to it', async ({
@@ -23,6 +23,7 @@ test.describe('Tutorial: Writing Your First Story (happy path)', () => {
     page: Page;
   }) => {
     await gotoApp(page, 'The Undrawn Valley');
+    await openProjectChat(page);
 
     const composer = page.locator('[aria-label="Chat message"]');
     await composer.click();
@@ -47,6 +48,7 @@ test.describe('Tutorial: Writing Your First Story (happy path)', () => {
   test('create a sourcebook character via chat', async ({ page }: { page: Page }) => {
     await gotoApp(page, 'The Undrawn Valley');
     await openSidebar(page);
+    await openProjectChat(page);
 
     const composer = page.locator('[aria-label="Chat message"]');
     await composer.click();
@@ -68,6 +70,7 @@ test.describe('Tutorial: Writing Your First Story (happy path)', () => {
   }) => {
     await gotoApp(page, 'The Undrawn Valley');
     await openSidebar(page);
+    await openProjectChat(page);
 
     const composer = page.locator('[aria-label="Chat message"]');
     await composer.click();

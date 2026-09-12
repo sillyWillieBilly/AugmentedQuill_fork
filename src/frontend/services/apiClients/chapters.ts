@@ -11,11 +11,22 @@
 
 import { Conflict } from '../../types';
 import { ChapterDetailResponse, ChapterListResponse } from '../apiTypes';
+import { ContentWriteOptions, RevisionedContent } from '../contentRevision';
 import { fetchJson, putJson, postJson, deleteJson, projectEndpoint } from './shared';
+
+export type RevisionedChapterDetailResponse = ChapterDetailResponse &
+  RevisionedContent & {
+    book_id?: string | null;
+  };
+
+export interface ChapterContentWriteResponse extends RevisionedContent {
+  ok: boolean;
+  id: number;
+}
 
 export interface ChaptersApi {
   list: () => Promise<ChapterListResponse>;
-  get: (id: number) => Promise<ChapterDetailResponse>;
+  get: (id: number) => Promise<RevisionedChapterDetailResponse>;
   create: (
     title: string,
     content?: string,
@@ -26,7 +37,11 @@ export interface ChaptersApi {
     title: string;
     book_id?: string | undefined;
   }>;
-  updateContent: (id: number, content: string) => Promise<{ ok: boolean }>;
+  updateContent: (
+    id: number,
+    content: string,
+    options?: ContentWriteOptions
+  ) => Promise<ChapterContentWriteResponse>;
   updateTitle: (id: number, title: string) => Promise<{ ok: boolean }>;
   updateSummary: (id: number, summary: string) => Promise<{ ok: boolean }>;
   updateMetadata: (
@@ -50,8 +65,8 @@ export const createChaptersApi = (projectName: string): ChaptersApi => ({
       'Failed to list chapters'
     ),
 
-  get: async (id: number) => {
-    return fetchJson<ChapterDetailResponse>(
+  get: async (id: number): Promise<RevisionedChapterDetailResponse> => {
+    return fetchJson<RevisionedChapterDetailResponse>(
       projectEndpoint(projectName, `/chapters/${id}`),
       undefined,
       'Failed to get chapter'
@@ -75,10 +90,14 @@ export const createChaptersApi = (projectName: string): ChaptersApi => ({
     );
   },
 
-  updateContent: async (id: number, content: string): Promise<{ ok: boolean }> => {
-    return putJson<{ ok: boolean }>(
+  updateContent: async (
+    id: number,
+    content: string,
+    options?: ContentWriteOptions
+  ): Promise<ChapterContentWriteResponse> => {
+    return putJson<ChapterContentWriteResponse>(
       projectEndpoint(projectName, `/chapters/${id}/content`),
-      { content },
+      { content, ...options },
       'Failed to update chapter content'
     );
   },

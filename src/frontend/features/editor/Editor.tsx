@@ -17,12 +17,13 @@ import React, {
   useState,
 } from 'react';
 import { EditorView } from '@codemirror/view';
-import type { StateEffect } from '@codemirror/state';
+import { Transaction, type StateEffect } from '@codemirror/state';
 import {
   undo as undoCommand,
   redo as redoCommand,
   undoDepth,
   redoDepth,
+  isolateHistory,
 } from '@codemirror/commands';
 import {
   EditorSettings,
@@ -52,7 +53,17 @@ import {
   setAnnotationClickCallback,
   setAnnotationCursorCallback,
 } from './annotationPlugin';
-import { transferInternalMarkers } from './internalTags';
+import { transferInternalMarkers, stripInlineInternalMarkers } from './internalTags';
+import { EditorSaveBar } from './EditorSaveBar';
+import { writeLocalDraft, type LocalDraft } from './localDraft';
+import { getSaveStatus, useSaveStatusStore } from '../../stores/saveStatusStore';
+import { contentDocumentKey } from '../../services/contentRevision';
+import {
+  PassageConflict,
+  planPassageReplacement,
+  type PassageSnapshot,
+  type PassageTarget,
+} from '../workshop/passageTarget';
 import { EditorSuggestionPanel } from './EditorSuggestionPanel';
 import { EditorMobileToolbar } from './EditorMobileToolbar';
 import { EditorProvider } from './EditorContext';
@@ -68,6 +79,46 @@ import { useEditorFormatting } from './hooks/useEditorFormatting';
 
 const STREAM_FOLLOW_ATTACH_DISTANCE_PX = 200;
 
+/** Convert a CodeMirror UTF-16 position (where each line break is one unit)
+ * to a position in the raw visible manuscript (where CRLF is two units). */
+function editorOffsetToRawVisible(
+  text: string,
+  offset: number,
+  separator: string = '\n'
+): number {
+  const target: number = Math.max(0, Math.min(Math.trunc(offset), text.length));
+  let raw = 0;
+  let editor = 0;
+  while (raw < text.length && editor < target) {
+    if (text.startsWith(separator, raw)) raw += separator.length;
+    else raw += 1;
+    editor += 1;
+  }
+  return raw;
+}
+
+/** Convert a raw visible manuscript position to CodeMirror's line model. */
+function rawVisibleOffsetToEditor(
+  text: string,
+  offset: number,
+  separator: string = '\n'
+): number {
+  const target: number = Math.max(0, Math.min(Math.trunc(offset), text.length));
+  let raw = 0;
+  let editor = 0;
+  while (raw < target) {
+    if (text.startsWith(separator, raw) && raw + separator.length <= target)
+      raw += separator.length;
+    else raw += 1;
+    editor += 1;
+  }
+  return editor;
+}
+
+function normalizeLineEndings(text: string, separator: string): string {
+  return text.replace(/\r\n|\r|\n/g, separator);
+}
+
 // URL sanitizer — re-exported for backward compat with Editor.url.test.ts
 export { isSafeImageUrl } from './editorUtils';
 import { isSafeImageUrl } from './editorUtils';
@@ -76,7 +127,10 @@ import { isRangeVisible } from '../../utils/scrollUtils';
 // Pending highlights stored when editorViewRef is null during Editor
 // remount (e.g. chapter loading skeleton).  Module-level so they
 // survive Editor unmount/remount cycles.
-let gPendingHighlights: ProseHighlightRange[] | null = null;
+let gPendingHighlights: {
+  documentIdentity: string;
+  entries: ProseHighlightRange[];
+} | null = null;
 
 interface EditorProps {
   chapter: WritingUnit;
@@ -116,6 +170,7 @@ interface EditorProps {
   };
   onContextChange?: (formats: string[]) => void;
   onOpenSearch?: () => void;
+  onReloadContent?: () => Promise<void>;
 }
 
 export interface EditorHandle {
@@ -166,6 +221,10 @@ export interface EditorHandle {
   ) => void;
   /** Return current selection (anchor/head) or null when editor is unavailable. */
   getSelection: () => { anchor: number; head: number } | null;
+  /** Capture the live buffer and selection, including unsaved prose and raw markers. */
+  getPassageSnapshot: () => PassageSnapshot | null;
+  /** Apply one checked local edit; persistence reports its separate save status. */
+  applyPassage: (target: PassageTarget, replacement: string) => void;
 }
 
 /* eslint-disable complexity */
@@ -185,10 +244,53 @@ export const Editor = React.memo(
         spellCheck,
         onContextChange,
         onOpenSearch,
+        onReloadContent,
       }: EditorProps,
       ref: React.ForwardedRef<EditorHandle>
     ) => {
       const { t } = useTranslation();
+      const editorProjectId = useStoryStore(
+        (state: StoryStoreState): string => state.story.id
+      );
+      const documentKey =
+        chapter.document_key ||
+        (chapter.scope === 'story'
+          ? chapter.filename || 'story_content.md'
+          : `${chapter.book_id ? `books/${chapter.book_id}/` : ''}chapters/${chapter.filename || chapter.id}`);
+      const saveDocumentIdentity = contentDocumentKey(editorProjectId, documentKey);
+      // Include the logical unit as well as its stable path.  A malformed or
+      // mid-migration payload can briefly expose the same filename for two
+      // chapter objects; deferred UI work must still belong to the chapter
+      // that scheduled it.
+      const documentIdentity = JSON.stringify([
+        saveDocumentIdentity,
+        chapter.scope,
+        chapter.id,
+        chapter.book_id ?? null,
+      ]);
+      // Keep the effective separator stable for this logical document.  A
+      // one-line chapter starts with the default LF separator; when ordinary
+      // typing adds its first newline (and the parent acknowledges it), the
+      // editor must keep that same separator and history.  A new document
+      // gets a fresh separator on the identity transition.
+      const documentLineSeparatorRef = useRef({
+        identity: documentIdentity,
+        separator: chapter.content.match(/\r\n|\r|\n/)?.[0] || '\n',
+      });
+      if (documentLineSeparatorRef.current.identity !== documentIdentity) {
+        documentLineSeparatorRef.current = {
+          identity: documentIdentity,
+          separator: chapter.content.match(/\r\n|\r|\n/)?.[0] || '\n',
+        };
+      }
+      const documentLineSeparator = documentLineSeparatorRef.current.separator;
+      // Render-time identity guard for deferred callbacks.  Effect cleanup is
+      // intentionally still used to cancel timers, but a timer that is
+      // already queued can run before that cleanup.  Comparing the captured
+      // identity with this ref prevents an old chapter/project callback from
+      // writing into the newly selected document.
+      const activeDocumentIdentityRef = useRef(documentIdentity);
+      activeDocumentIdentityRef.current = documentIdentity;
       // CodeMirror EditorView — persists across all view modes
       const editorViewRef = useRef<EditorView | null>(null);
       const paperDivRef = useRef<HTMLDivElement>(null);
@@ -209,7 +311,21 @@ export const Editor = React.memo(
       // trigger a network request.  Display updates remain synchronous.
       const contentDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
       const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+      const pendingContentRef = useRef<string | null>(null);
+      const pendingTitleRef = useRef<string | null>(null);
+      const [localPending, setLocalPending] = useState(false);
+      const [draftStorageError, setDraftStorageError] = useState(false);
       const DEBOUNCE_MS = 300;
+      useEffect(
+        () => (): void => {
+          if (contentDebounceRef.current) clearTimeout(contentDebounceRef.current);
+          if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
+          contentDebounceRef.current = null;
+          titleDebounceRef.current = null;
+          pendingTitleRef.current = null;
+        },
+        [documentIdentity]
+      );
 
       // Local content/title state so the editor div always gets the latest
       // typed value immediately, while the parent onChange (API call) is debounced.
@@ -239,9 +355,10 @@ export const Editor = React.memo(
         normalizeBaseline(baselineContent)
       );
       const lastChapterIdRef = useRef(chapter.id);
-      // Tracks the last full content (with markers) that was saved to the backend.
-      // Used to re-inject markers after user edits strip them from the editor doc.
-      const lastSavedFullContentRef = useRef(chapter.content);
+      const lastContentIdentityRef = useRef(documentIdentity);
+      // Marker positions for reconstructing live raw prose. This is not a disk
+      // acknowledgement; the conditional save client owns persisted revisions.
+      const markerBaselineContentRef = useRef(chapter.content);
 
       useEffect((): void => {
         const normalized = normalizeBaseline(baselineContent);
@@ -306,13 +423,31 @@ export const Editor = React.memo(
       // for chapter switches; also watch chapter.content so AI insertions and
       // undo/redo (which can change content without changing id) are reflected.
       useEffect((): void => {
-        const isChapterSwitch = chapter.id !== lastChapterIdRef.current;
-        lastChapterIdRef.current = chapter.id;
+        const isChapterSwitch = documentIdentity !== lastContentIdentityRef.current;
+        lastContentIdentityRef.current = documentIdentity;
 
         if (isChapterSwitch) {
+          pendingContentRef.current = null;
+          setLocalPending(false);
+          setDraftStorageError(false);
           deferredStreamingContentRef.current = null;
-          lastSavedFullContentRef.current = chapter.content;
+          markerBaselineContentRef.current = chapter.content;
         }
+        if (pendingContentRef.current === chapter.content) {
+          pendingContentRef.current = null;
+          setLocalPending(false);
+        }
+        // A blurred editor can still contain newer, unsaved typing. Parent
+        // acknowledgements and reloads must not replace that buffer implicitly.
+        const saveState = getSaveStatus(editorProjectId, documentKey)?.state;
+        if (
+          !isChapterSwitch &&
+          (pendingContentRef.current !== null ||
+            saveState === 'conflict' ||
+            saveState === 'error' ||
+            saveState === 'saving')
+        )
+          return;
 
         // During active streaming the streaming-slot effect below owns
         // localContent; skip the chapter.content sync to avoid flashing the
@@ -334,10 +469,17 @@ export const Editor = React.memo(
           setLocalContent(chapter.content);
           if (!isChapterSwitch) {
             // AI/undo/redo updated the content externally — update our marker baseline
-            lastSavedFullContentRef.current = chapter.content;
+            markerBaselineContentRef.current = chapter.content;
           }
         }
-      }, [chapter.id, chapter.content, proseStreamingActive]);
+      }, [
+        chapter.id,
+        chapter.content,
+        documentIdentity,
+        editorProjectId,
+        documentKey,
+        proseStreamingActive,
+      ]);
 
       // Push each streamed chunk directly into the editor's local state so
       // only this component re-renders — story.chapters stays untouched.
@@ -381,8 +523,18 @@ export const Editor = React.memo(
       }, [proseStreamingActive]);
 
       useEffect((): void => {
+        // Keep a title typed into the current editor until its parent state
+        // acknowledges the same value.  A content save or unrelated parent
+        // refresh must not put an older title back into the input.
+        if (pendingTitleRef.current !== null) {
+          if (pendingTitleRef.current === chapter.title) {
+            pendingTitleRef.current = null;
+          } else {
+            return;
+          }
+        }
         setLocalTitle(chapter.title);
-      }, [chapter.id, chapter.title]);
+      }, [chapter.id, chapter.title, documentIdentity]);
 
       const {
         continuations,
@@ -612,7 +764,7 @@ export const Editor = React.memo(
         (e: DragEvent, view: EditorView): void => {
           const sel = view.state.selection.main;
           if (sel.empty) return;
-          const text = view.state.doc.sliceString(sel.from, sel.to);
+          const text = view.state.sliceDoc(sel.from, sel.to);
           const payload = JSON.stringify({
             scopeType: chapter.scope,
             chapterId: chapter.scope === 'chapter' ? chapter.id : undefined,
@@ -637,6 +789,8 @@ export const Editor = React.memo(
         const view = editorViewRef.current;
         if (!view) return;
 
+        // Formatting helpers operate in CodeMirror's logical line offsets;
+        // keep their LF view even when persistence uses CRLF.
         const rawText = view.state.doc.toString();
         const { anchor, head } = view.state.selection.main;
         const rawStart = Math.min(anchor, head);
@@ -715,115 +869,236 @@ export const Editor = React.memo(
         }
       };
 
-      useImperativeHandle(ref, () => ({
-        insertImage: (filename: string, url: string, altText?: string): void =>
-          insertImageMarkdown(filename, url, altText),
-        focus: (): void => {
-          editorViewRef.current?.focus();
-        },
-        format: (type: string): void => format(type),
-        undo: (): void => {
-          const view = editorViewRef.current;
-          if (!view || undoDepth(view.state) <= 0) return;
-          undoCommand(view);
-          view.focus();
-        },
-        redo: (): void => {
-          const view = editorViewRef.current;
-          if (!view || redoDepth(view.state) <= 0) return;
-          redoCommand(view);
-          view.focus();
-        },
-        canUndo: (): boolean => {
-          const view = editorViewRef.current;
-          return Boolean(view && undoDepth(view.state) > 0);
-        },
-        canRedo: (): boolean => {
-          const view = editorViewRef.current;
-          return Boolean(view && redoDepth(view.state) > 0);
-        },
-        jumpToPosition: (start: number, end: number): void => {
-          const view = editorViewRef.current;
-          if (!view) return;
-          const docLen = view.state.doc.length;
-          const safeEnd = Math.min(Math.max(start, end), docLen);
-          const safeStart = Math.min(Math.max(0, start), safeEnd);
-          view.dispatch({
-            selection: { anchor: safeStart, head: safeEnd },
-            scrollIntoView: true,
-          });
-          view.focus();
-        },
-        getEditorView: (): EditorView | null => editorViewRef.current,
-        setOnCursorChange: (
-          cb: ((anchor: number, head: number) => void) | null
-        ): void => {
-          externalCursorCallbackRef.current = cb;
-        },
-        setProseHighlights: (entries: ProseHighlightRange[]): void => {
-          const view = editorViewRef.current;
-          if (view) {
-            gPendingHighlights = null;
-            const effects: StateEffect<unknown>[] = [
-              setProseHighlightEffect.of(entries),
-            ];
-            if (entries.length > 0) {
-              const { from, to } = entries[0];
-              if (!isRangeVisible(from, to, view.visibleRanges)) {
-                effects.push(EditorView.scrollIntoView(from));
-              }
-            }
-            view.dispatch({ effects });
-          } else {
-            // EditorView not created yet — store and retry after effects
-            gPendingHighlights = entries;
-            const capturedRef = editorViewRef;
-            setTimeout((): void => {
-              const rv = capturedRef.current;
-              if (!rv || !gPendingHighlights) return;
-              const pending = gPendingHighlights;
+      const getPassageSnapshot = (): PassageSnapshot | null => {
+        if (activeDocumentIdentityRef.current !== documentIdentity) return null;
+        const view = editorViewRef.current;
+        if (!view || !editorProjectId) return null;
+        const scope = chapter.scope === 'story' ? 'story' : 'chapter';
+        const filename = chapter.filename || (scope === 'story' ? 'content.md' : '');
+        if (!filename) return null;
+        const { anchor, head } = view.state.selection.main;
+        const visibleContent = view.state.sliceDoc();
+        const currentContent = transferInternalMarkers(
+          markerBaselineContentRef.current,
+          visibleContent
+        );
+        return {
+          projectId: editorProjectId,
+          documentId: chapter.id,
+          documentKey,
+          chapterTitle: chapter.title,
+          bookId: chapter.book_id,
+          scope,
+          content: currentContent,
+          selection: {
+            anchor: editorOffsetToRawVisible(
+              visibleContent,
+              anchor,
+              documentLineSeparator
+            ),
+            head: editorOffsetToRawVisible(visibleContent, head, documentLineSeparator),
+          },
+          language: language || 'en',
+        };
+      };
+
+      useImperativeHandle(ref, () => {
+        const isCurrentDocument = (): boolean =>
+          activeDocumentIdentityRef.current === documentIdentity;
+        return {
+          getPassageSnapshot: (): PassageSnapshot | null =>
+            isCurrentDocument() ? getPassageSnapshot() : null,
+          applyPassage: (target: PassageTarget, replacement: string): void => {
+            if (!isCurrentDocument()) throw new PassageConflict('document');
+            const view = editorViewRef.current;
+            const current = getPassageSnapshot();
+            if (!view || !current) throw new PassageConflict('document');
+            const visibleCurrent = stripInlineInternalMarkers(current.content);
+            const edit = planPassageReplacement(
+              current,
+              target,
+              normalizeLineEndings(replacement, documentLineSeparator)
+            );
+            markerBaselineContentRef.current = edit.content;
+            const editorFrom = rawVisibleOffsetToEditor(
+              visibleCurrent,
+              edit.from,
+              documentLineSeparator
+            );
+            const editorTo = rawVisibleOffsetToEditor(
+              visibleCurrent,
+              edit.to,
+              documentLineSeparator
+            );
+            const editorInsertLength = rawVisibleOffsetToEditor(
+              edit.insert,
+              edit.insert.length,
+              documentLineSeparator
+            );
+            view.dispatch({
+              changes: { from: editorFrom, to: editorTo, insert: edit.insert },
+              selection: { anchor: editorFrom + editorInsertLength },
+              annotations: [
+                Transaction.userEvent.of('input.workshop'),
+                isolateHistory.of('full'),
+              ],
+              scrollIntoView: true,
+            });
+            view.focus();
+          },
+          insertImage: (filename: string, url: string, altText?: string): void => {
+            if (isCurrentDocument()) insertImageMarkdown(filename, url, altText);
+          },
+          focus: (): void => {
+            if (isCurrentDocument()) editorViewRef.current?.focus();
+          },
+          format: (type: string): void => {
+            if (isCurrentDocument()) format(type);
+          },
+          undo: (): void => {
+            if (!isCurrentDocument()) return;
+            const view = editorViewRef.current;
+            if (!view || undoDepth(view.state) <= 0) return;
+            undoCommand(view);
+            view.focus();
+          },
+          redo: (): void => {
+            if (!isCurrentDocument()) return;
+            const view = editorViewRef.current;
+            if (!view || redoDepth(view.state) <= 0) return;
+            redoCommand(view);
+            view.focus();
+          },
+          canUndo: (): boolean => {
+            if (!isCurrentDocument()) return false;
+            const view = editorViewRef.current;
+            return Boolean(view && undoDepth(view.state) > 0);
+          },
+          canRedo: (): boolean => {
+            if (!isCurrentDocument()) return false;
+            const view = editorViewRef.current;
+            return Boolean(view && redoDepth(view.state) > 0);
+          },
+          jumpToPosition: (start: number, end: number): void => {
+            if (!isCurrentDocument()) return;
+            const view = editorViewRef.current;
+            if (!view) return;
+            const visibleContent = view.state.sliceDoc();
+            const editorStart = rawVisibleOffsetToEditor(
+              visibleContent,
+              start,
+              documentLineSeparator
+            );
+            const editorEnd = rawVisibleOffsetToEditor(
+              visibleContent,
+              end,
+              documentLineSeparator
+            );
+            const docLen = view.state.doc.length;
+            const safeEnd = Math.min(Math.max(editorStart, editorEnd), docLen);
+            const safeStart = Math.min(Math.max(0, editorStart), safeEnd);
+            view.dispatch({
+              selection: { anchor: safeStart, head: safeEnd },
+              scrollIntoView: true,
+            });
+            view.focus();
+          },
+          getEditorView: (): EditorView | null =>
+            isCurrentDocument() ? editorViewRef.current : null,
+          setOnCursorChange: (
+            cb: ((anchor: number, head: number) => void) | null
+          ): void => {
+            if (isCurrentDocument()) externalCursorCallbackRef.current = cb;
+          },
+          setProseHighlights: (entries: ProseHighlightRange[]): void => {
+            if (!isCurrentDocument()) return;
+            const view = editorViewRef.current;
+            if (view) {
               gPendingHighlights = null;
-              const rEffects: StateEffect<unknown>[] = [
-                setProseHighlightEffect.of(pending),
+              const effects: StateEffect<unknown>[] = [
+                setProseHighlightEffect.of(entries),
               ];
-              if (pending.length > 0) {
-                const { from, to } = pending[0];
-                if (!isRangeVisible(from, to, rv.visibleRanges)) {
-                  rEffects.push(EditorView.scrollIntoView(from));
+              if (entries.length > 0) {
+                const { from, to } = entries[0];
+                if (!isRangeVisible(from, to, view.visibleRanges)) {
+                  effects.push(EditorView.scrollIntoView(from));
                 }
               }
-              rv.dispatch({ effects: rEffects });
-            }, 0);
-          }
-        },
-        clearProseHighlight: (): void => {
-          editorViewRef.current?.dispatch({
-            effects: setProseHighlightEffect.of([]),
-          });
-        },
-        setOnProseBoundaryChange: (cb: ProseBoundaryCallback | null): void => {
-          proseBoundaryCallbackRef.current = cb;
-        },
-        setAnnotationRanges: (ranges: AnnotationRange[]): void => {
-          editorViewRef.current?.dispatch({
-            effects: setAnnotationRangesEffect.of(ranges),
-          });
-        },
-        setOnAnnotationClick: (
-          cb: ((annotationId: string | null) => void) | null
-        ): void => {
-          setAnnotationClickCallback(cb);
-        },
-        setOnAnnotationCursorChange: (
-          cb: ((annotationId: string | null) => void) | null
-        ): void => {
-          setAnnotationCursorCallback(cb);
-        },
-        getSelection: (): { anchor: number; head: number } | null => {
-          const sel = editorViewRef.current?.state.selection.main;
-          return sel ? { anchor: sel.anchor, head: sel.head } : null;
-        },
-      }));
+              view.dispatch({ effects });
+            } else {
+              // EditorView not created yet — store and retry after effects
+              gPendingHighlights = { documentIdentity, entries };
+              const capturedRef = editorViewRef;
+              setTimeout((): void => {
+                const rv = capturedRef.current;
+                if (
+                  !rv ||
+                  !gPendingHighlights ||
+                  gPendingHighlights.documentIdentity !== documentIdentity ||
+                  activeDocumentIdentityRef.current !== documentIdentity
+                )
+                  return;
+                const pending = gPendingHighlights.entries;
+                gPendingHighlights = null;
+                const rEffects: StateEffect<unknown>[] = [
+                  setProseHighlightEffect.of(pending),
+                ];
+                if (pending.length > 0) {
+                  const { from, to } = pending[0];
+                  if (!isRangeVisible(from, to, rv.visibleRanges)) {
+                    rEffects.push(EditorView.scrollIntoView(from));
+                  }
+                }
+                rv.dispatch({ effects: rEffects });
+              }, 0);
+            }
+          },
+          clearProseHighlight: (): void => {
+            if (isCurrentDocument())
+              editorViewRef.current?.dispatch({
+                effects: setProseHighlightEffect.of([]),
+              });
+          },
+          setOnProseBoundaryChange: (cb: ProseBoundaryCallback | null): void => {
+            if (isCurrentDocument()) proseBoundaryCallbackRef.current = cb;
+          },
+          setAnnotationRanges: (ranges: AnnotationRange[]): void => {
+            if (isCurrentDocument())
+              editorViewRef.current?.dispatch({
+                effects: setAnnotationRangesEffect.of(ranges),
+              });
+          },
+          setOnAnnotationClick: (
+            cb: ((annotationId: string | null) => void) | null
+          ): void => {
+            if (isCurrentDocument()) setAnnotationClickCallback(cb);
+          },
+          setOnAnnotationCursorChange: (
+            cb: ((annotationId: string | null) => void) | null
+          ): void => {
+            if (isCurrentDocument()) setAnnotationCursorCallback(cb);
+          },
+          getSelection: (): { anchor: number; head: number } | null => {
+            if (!isCurrentDocument()) return null;
+            const view = editorViewRef.current;
+            const sel = view?.state.selection.main;
+            if (!view || !sel) return null;
+            const visibleContent = view.state.sliceDoc();
+            return {
+              anchor: editorOffsetToRawVisible(
+                visibleContent,
+                sel.anchor,
+                documentLineSeparator
+              ),
+              head: editorOffsetToRawVisible(
+                visibleContent,
+                sel.head,
+                documentLineSeparator
+              ),
+            };
+          },
+        };
+      });
 
       // Styles & Theme Logic — paper colours come from the shared helper so
       // every paper-like surface (writing editor, dialog content fields) is
@@ -969,6 +1244,62 @@ export const Editor = React.memo(
             className={`flex flex-col h-full w-full overflow-hidden relative ${editorContainerBg}`}
           >
             <EditorMobileToolbar />
+            <EditorSaveBar
+              key={documentIdentity}
+              projectId={editorProjectId}
+              documentKey={documentKey}
+              filename={chapter.filename || chapter.title}
+              content={chapter.content}
+              storageError={draftStorageError}
+              pending={localPending}
+              getContent={(): string =>
+                getPassageSnapshot()?.content || localContentRef.current
+              }
+              onReload={
+                onReloadContent
+                  ? async (): Promise<void> => {
+                      if (contentDebounceRef.current)
+                        clearTimeout(contentDebounceRef.current);
+                      contentDebounceRef.current = null;
+                      // Clear the local pending gate before awaiting the
+                      // reload.  reloadDocument updates the chapter prop
+                      // before resolving; leaving this ref set until after
+                      // the await makes the sync effect retain the stale
+                      // buffer and there is no later prop change to retry it.
+                      pendingContentRef.current = null;
+                      setLocalPending(false);
+                      await onReloadContent();
+                    }
+                  : undefined
+              }
+              onRestore={(draft: LocalDraft): void => {
+                const status = getSaveStatus(editorProjectId, documentKey);
+                if (!draft.baseRevision || status?.revision !== draft.baseRevision) {
+                  useSaveStatusStore
+                    .getState()
+                    .setConflict(
+                      editorProjectId,
+                      documentKey,
+                      t('workshop.save.recoveryConflict'),
+                      status?.revision
+                    );
+                }
+                markerBaselineContentRef.current = draft.content;
+                const view = editorViewRef.current;
+                if (view)
+                  view.dispatch({
+                    changes: {
+                      from: 0,
+                      to: view.state.doc.length,
+                      insert: stripInlineInternalMarkers(draft.content),
+                    },
+                    annotations: [
+                      Transaction.userEvent.of('input.recovery'),
+                      isolateHistory.of('full'),
+                    ],
+                  });
+              }}
+            />
 
             {/* Main Scrollable Content Area */}
             <div
@@ -1019,9 +1350,14 @@ export const Editor = React.memo(
                       ): void => {
                         const val = e.target.value.replace(/\n/g, '');
                         setLocalTitle(val);
+                        pendingTitleRef.current = val;
                         if (titleDebounceRef.current)
                           clearTimeout(titleDebounceRef.current);
+                        const scheduledIdentity = documentIdentity;
                         titleDebounceRef.current = setTimeout((): void => {
+                          if (activeDocumentIdentityRef.current !== scheduledIdentity)
+                            return;
+                          titleDebounceRef.current = null;
                           onChange(chapter.id, { title: val });
                         }, DEBOUNCE_MS);
                       }}
@@ -1046,8 +1382,15 @@ export const Editor = React.memo(
                 <div id="editor-area" className="flex flex-col relative w-full">
                   <div id="codemirror-editor" className="relative w-full flex flex-col">
                     <CodeMirrorEditor
+                      // The source separator is derived from the document
+                      // prop, not the live buffer.  Including localContent
+                      // here would remount CodeMirror when the first newline
+                      // is typed into a one-line document and discard its
+                      // caret/history.
+                      key={documentIdentity}
                       ref={editorViewRef}
                       value={localContent}
+                      lineSeparator={documentLineSeparator}
                       language={language}
                       spellCheck={spellCheck}
                       onOpenSearch={onOpenSearch}
@@ -1055,6 +1398,23 @@ export const Editor = React.memo(
                       onChange={(val: string, isUndoRedo?: boolean): void => {
                         setLocalContent(val);
                         localContentRef.current = val;
+                        const contentWithMarkers = transferInternalMarkers(
+                          markerBaselineContentRef.current,
+                          val
+                        );
+                        markerBaselineContentRef.current = contentWithMarkers;
+                        pendingContentRef.current = contentWithMarkers;
+                        setLocalPending(true);
+                        setDraftStorageError(
+                          !writeLocalDraft({
+                            projectId: editorProjectId,
+                            documentKey,
+                            content: contentWithMarkers,
+                            baseRevision: getSaveStatus(editorProjectId, documentKey)
+                              ?.revision,
+                            updatedAt: new Date().toISOString(),
+                          })
+                        );
                         // Clear diff immediately on user input so typed text is
                         // never highlighted as a diff insertion. Keep the baseline
                         // active when undo/redo is used so the diff view works.
@@ -1072,16 +1432,12 @@ export const Editor = React.memo(
                         if (contentDebounceRef.current) {
                           clearTimeout(contentDebounceRef.current);
                         }
+                        const scheduledIdentity = documentIdentity;
                         contentDebounceRef.current = setTimeout((): void => {
-                          // Re-inject internal markers (scene + annotation) that
-                          // were stripped from the editor document when
-                          // hideSceneMarkers is true.  The backend expects content
-                          // with markers so markers are preserved across saves.
-                          const contentWithMarkers = transferInternalMarkers(
-                            lastSavedFullContentRef.current,
-                            val
-                          );
-                          lastSavedFullContentRef.current = contentWithMarkers;
+                          if (activeDocumentIdentityRef.current !== scheduledIdentity)
+                            return;
+                          contentDebounceRef.current = null;
+                          setLocalPending(false);
                           onChange(
                             chapter.id,
                             { content: contentWithMarkers },
@@ -1091,7 +1447,21 @@ export const Editor = React.memo(
                       }}
                       onSelectionChange={(anchor: number, head: number): void => {
                         scheduleCheckContext();
-                        externalCursorCallbackRef.current?.(anchor, head);
+                        const visibleContent = editorViewRef.current?.state.sliceDoc();
+                        if (visibleContent !== undefined) {
+                          externalCursorCallbackRef.current?.(
+                            editorOffsetToRawVisible(
+                              visibleContent,
+                              anchor,
+                              documentLineSeparator
+                            ),
+                            editorOffsetToRawVisible(
+                              visibleContent,
+                              head,
+                              documentLineSeparator
+                            )
+                          );
+                        }
                       }}
                       viewMode={
                         viewMode === 'wysiwyg'

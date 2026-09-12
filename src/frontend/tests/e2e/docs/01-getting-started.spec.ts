@@ -14,7 +14,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { DEMO_PROJECT, gotoApp, openSidebar } from './support/helpers';
+import { DEMO_PROJECT, gotoApp, openProjectChat, openSidebar } from './support/helpers';
 
 test.describe('Getting Started — main interface', () => {
   test.beforeEach(async ({ page }: { page: Page }) => {
@@ -217,6 +217,7 @@ test.describe('Getting Started — main interface', () => {
   }: {
     page: Page;
   }) => {
+    await openProjectChat(page);
     const composer = page.locator('[aria-label="Chat message"]');
     await expect(composer).toBeAttached({ timeout: 10000 });
 

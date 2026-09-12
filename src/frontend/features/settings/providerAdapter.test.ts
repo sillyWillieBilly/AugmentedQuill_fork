@@ -104,6 +104,31 @@ describe('provider mapping roundtrip', () => {
     expect(back.api_key).toBeUndefined();
   });
 
+  it('repairs invalid loop guard values at the settings boundary', () => {
+    const provider = machineModelToProvider(
+      {
+        name: 'local',
+        base_url: 'http://127.0.0.1:8080/v1',
+        api_key: null,
+        model: 'local-model',
+        suggest_loop_guard_min_repeats: 0,
+        suggest_loop_guard_max_regens: 99,
+      } as unknown as MachineModelConfig,
+      DEFAULT_LLM_CONFIG
+    );
+
+    expect(provider.suggestLoopGuardMinRepeats).toBe(3);
+    expect(provider.suggestLoopGuardMaxRegens).toBe(1);
+
+    const back = providerToMachineModel({
+      ...provider,
+      suggestLoopGuardMinRepeats: 0,
+      suggestLoopGuardMaxRegens: 99,
+    });
+    expect(back.suggest_loop_guard_min_repeats).toBe(3);
+    expect(back.suggest_loop_guard_max_regens).toBe(1);
+  });
+
   it('treats blank max_tokens as undefined and falls back to provider default', () => {
     const model = {
       name: 'chat-model',

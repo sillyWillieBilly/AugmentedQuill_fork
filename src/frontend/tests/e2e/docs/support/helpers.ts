@@ -78,6 +78,15 @@ export async function openSidebar(page: Page): Promise<void> {
   }
 }
 
+/** Switch the right panel from the default Workshop tab to project chat. */
+export async function openProjectChat(page: Page): Promise<void> {
+  const chatTab = page.getByRole('button', { name: 'Project chat', exact: true });
+  await chatTab.click({ timeout: 10000 });
+  await expect(page.locator('[aria-label="Chat message"]')).toBeVisible({
+    timeout: 10000,
+  });
+}
+
 /** Click a header button by its accessible title / tooltip text. */
 export async function clickHeaderButton(page: Page, title: string): Promise<void> {
   const btn = page.locator(`[title="${title}"]`).first();

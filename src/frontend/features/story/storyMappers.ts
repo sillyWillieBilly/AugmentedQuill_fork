@@ -61,7 +61,16 @@ export const mapStorySourcebook = (
 ): SourcebookEntry[] => (entries ?? []).map(mapStorySourcebookEntry);
 
 export const mapApiChapters = (chapters: ChapterListItem[]): Chapter[] =>
-  chapters.map(mapChapterListItemToChapter);
+  chapters.map((chapter: ChapterListItem): Chapter => {
+    const mapped = mapChapterListItemToChapter(chapter);
+    const withRevisionIdentity = chapter as ChapterListItem & {
+      document_key?: string;
+    };
+    return {
+      ...mapped,
+      document_key: withRevisionIdentity.document_key,
+    };
+  });
 
 export const reanchorChapterSelection = (
   previousSelection: string | null,

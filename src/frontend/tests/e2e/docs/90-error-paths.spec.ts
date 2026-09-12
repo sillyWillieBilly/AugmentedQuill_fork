@@ -21,6 +21,7 @@ import {
   SERIES_PROJECT,
   gotoApp,
   openSidebar,
+  openProjectChat,
   openSettings,
   closeDialog,
 } from './support/helpers';
@@ -49,6 +50,7 @@ test.describe('Error paths — destructive actions', () => {
   test.beforeEach(async ({ page }: { page: Page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await gotoApp(page, DEMO_PROJECT);
+    await openProjectChat(page);
     await openSidebar(page);
   });
 
@@ -357,6 +359,7 @@ test.describe('Error paths — LLM and chat failures', () => {
   test.beforeEach(async ({ page }: { page: Page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await gotoApp(page, DEMO_PROJECT);
+    await openProjectChat(page);
   });
 
   // An upstream LLM failure in the CHAT flow must be surfaced as an "AI Error"
@@ -499,6 +502,7 @@ test.describe('Error paths — project creation and deletion', () => {
   test.beforeEach(async ({ page }: { page: Page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await gotoApp(page, DEMO_PROJECT);
+    await openProjectChat(page);
   });
 
   test('cancelling chat-driven project creation creates no project', async ({

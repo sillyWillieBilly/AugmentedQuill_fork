@@ -16,6 +16,7 @@ import type { Scene, StoryState, Chapter, Book } from '../../types';
 import { api } from '../../services/api';
 import { resetStoryStore, useStoryStore } from '../../stores/storyStore';
 import { useChatStore } from '../../stores/chatStore';
+import { useSaveStatusStore } from '../../stores/saveStatusStore';
 import {
   buildInitialStoryState,
   resolveExternalHistorySourceState,
@@ -150,6 +151,7 @@ const hookWithStory = async (
 // Reset Zustand store between tests to prevent state leaking across test cases.
 beforeEach(() => {
   resetStoryStore();
+  useSaveStatusStore.setState({ entries: {} });
   useChatStore.setState({
     sessionMutations: [],
   });
@@ -232,6 +234,83 @@ it('patchSourcebook updates the reactive story store immediately', async () => {
     .story.sourcebook?.find((entry: SourcebookEntry): boolean => entry.id === 'tt-1');
   expect(updated?.destination_datetime).toBe('2015-10-21T16:29:00Z');
   expect(updated?.creates_new_timeline).toBe(true);
+});
+
+it('refuses a chapter content save until its loaded revision is available', async () => {
+  vi.mocked(api.chapters.updateContent).mockClear();
+  vi.mocked(api.chapters.get).mockResolvedValue({
+    content: 'Original',
+    filename: '0001.txt',
+    document_key: 'chapters/0001.txt',
+    notes: '',
+    private_notes: '',
+    conflicts: [],
+    title: 'Chapter 1',
+    summary: '',
+  } as unknown as Awaited<ReturnType<typeof api.chapters.get>>);
+  const chapter = {
+    ...buildChapter('1', 'Original'),
+    filename: '0001.txt',
+    document_key: 'chapters/0001.txt',
+  };
+  const { result } = renderHook(() => baseHook());
+
+  await act(async () => {
+    result.current.loadStory({
+      ...buildStory('initial'),
+      id: 'demo',
+      chapters: [chapter],
+      currentChapterId: '1',
+    });
+    await Promise.resolve();
+  });
+
+  await act(async () => {
+    await result.current.updateChapter('1', { content: 'Edited' });
+  });
+
+  expect(api.chapters.updateContent).not.toHaveBeenCalled();
+  expect(
+    useSaveStatusStore.getState().entries[JSON.stringify(['demo', 'chapters/0001.txt'])]
+  ).toMatchObject({
+    state: 'error',
+    error: expect.stringContaining('revision'),
+  });
+});
+
+it('refuses a short-story content save until its loaded revision is available', async () => {
+  vi.mocked(api.story.updateContent).mockClear();
+  const { result } = renderHook(() => baseHook());
+  await act(async () => {
+    result.current.loadStory({
+      ...buildStory('initial'),
+      id: 'short-demo',
+      projectType: 'short-story',
+      chapters: [],
+      currentChapterId: null,
+      draft: {
+        id: 'story',
+        scope: 'story',
+        title: 'Short demo',
+        summary: '',
+        content: 'Original',
+        filename: 'draft.md',
+        document_key: 'draft.md',
+      },
+    });
+  });
+
+  await act(async () => {
+    await result.current.updateChapter('story', { content: 'Edited' });
+  });
+
+  expect(api.story.updateContent).not.toHaveBeenCalled();
+  expect(
+    useSaveStatusStore.getState().entries[JSON.stringify(['short-demo', 'draft.md'])]
+  ).toMatchObject({
+    state: 'error',
+    error: expect.stringContaining('revision'),
+  });
 });
 
 it('clears chat session mutation tags when undo is used', async () => {
@@ -867,6 +946,117 @@ describe('buildInitialStoryState', () => {
 
     expect(result.current.story.chapters[0]?.content).toBe('Loaded content');
     expect(result.current.baselineState.chapters[0]?.content).toBe('Loaded content');
+  });
+
+  it('reloads the matching chapter and establishes the returned revision without writing', async () => {
+    const chapter = {
+      ...buildChapter('1', 'Original'),
+      document_key: 'chapters/0001.txt',
+    };
+    const { result } = renderHook(() => baseHook());
+    vi.mocked(api.chapters.get).mockResolvedValue({
+      content: 'Reloaded from disk',
+      filename: '0001.txt',
+      document_key: 'chapters/0001.txt',
+      revision: 'reloaded-revision',
+      notes: '',
+      private_notes: '',
+      conflicts: [],
+      title: 'Chapter 1',
+      summary: '',
+    } as unknown as Awaited<ReturnType<typeof api.chapters.get>>);
+
+    await act(async () => {
+      result.current.loadStory({
+        ...buildStory('initial'),
+        id: 'demo',
+        chapters: [chapter],
+        currentChapterId: '1',
+      });
+      await Promise.resolve();
+    });
+
+    let reloaded: Awaited<ReturnType<typeof result.current.reloadDocument>> | undefined;
+    await act(async () => {
+      reloaded = await result.current.reloadDocument();
+    });
+    expect(reloaded).toMatchObject({
+      ok: true,
+      projectName: 'demo',
+      documentKey: 'chapters/0001.txt',
+      revision: 'reloaded-revision',
+    });
+    expect(result.current.story.chapters[0]?.content).toBe('Reloaded from disk');
+    expect(
+      useSaveStatusStore.getState().entries[
+        JSON.stringify(['demo', 'chapters/0001.txt'])
+      ]?.state
+    ).toBe('saved');
+  });
+
+  it('refuses a reload response after the selected document changes', async () => {
+    const chapters = [
+      { ...buildChapter('1', 'One'), document_key: 'chapters/0001.txt' },
+      { ...buildChapter('2', 'Two'), document_key: 'chapters/0002.txt' },
+    ];
+    let chapterCall = 0;
+    let releaseReload: (() => void) | undefined;
+    const reloadPending = new Promise<void>((resolve: () => void) => {
+      releaseReload = (): void => resolve();
+    });
+    vi.mocked(api.chapters.get).mockImplementation(async (id: number) => {
+      chapterCall += 1;
+      if (chapterCall === 1) {
+        return {
+          content: 'One',
+          filename: '0001.txt',
+          document_key: 'chapters/0001.txt',
+          revision: 'base',
+          notes: '',
+          private_notes: '',
+          conflicts: [],
+          title: 'Chapter 1',
+          summary: '',
+        } as unknown as Awaited<ReturnType<typeof api.chapters.get>>;
+      }
+      await reloadPending;
+      return {
+        content: id === 1 ? 'Reloaded one' : 'Reloaded two',
+        filename: id === 1 ? '0001.txt' : '0002.txt',
+        document_key: id === 1 ? 'chapters/0001.txt' : 'chapters/0002.txt',
+        revision: 'reloaded',
+        notes: '',
+        private_notes: '',
+        conflicts: [],
+        title: `Chapter ${id}`,
+        summary: '',
+      } as unknown as Awaited<ReturnType<typeof api.chapters.get>>;
+    });
+    const { result } = renderHook(() => baseHook());
+    await act(async () => {
+      result.current.loadStory({
+        ...buildStory('initial'),
+        id: 'demo',
+        chapters,
+        currentChapterId: '1',
+      });
+      await Promise.resolve();
+    });
+
+    let reloadPromise: ReturnType<typeof result.current.reloadDocument> | undefined;
+    await act(async () => {
+      reloadPromise = result.current.reloadDocument();
+      await Promise.resolve();
+    });
+    act(() => result.current.selectChapter('2'));
+    releaseReload?.();
+    let reloadResult:
+      Awaited<ReturnType<typeof result.current.reloadDocument>> | undefined;
+    await act(async () => {
+      reloadResult = await reloadPromise;
+    });
+    expect(reloadResult?.ok).toBe(false);
+    expect(reloadResult?.error).toContain('changed');
   });
 
   it('preserves the lazily loaded original chapter state in the undo stack', async () => {

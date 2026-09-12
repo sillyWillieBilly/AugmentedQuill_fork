@@ -221,6 +221,7 @@ export type MainEditorAiControls = {
 };
 
 export type MainEditorControls = {
+  onReloadContent?: () => Promise<void>;
   currentChapter?: WritingUnit | null;
   isChapterLoading?: boolean;
   editorRef: RefObject<EditorHandle | null>;

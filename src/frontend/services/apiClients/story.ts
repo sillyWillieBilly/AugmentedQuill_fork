@@ -10,7 +10,14 @@
  */
 
 import { StoryContentResponse } from '../apiTypes';
+import { ContentWriteOptions, RevisionedContent } from '../contentRevision';
 import { fetchJson, putJson, projectEndpoint } from './shared';
+
+export type RevisionedStoryContentResponse = StoryContentResponse & RevisionedContent;
+
+export interface StoryContentWriteResponse extends RevisionedContent {
+  ok: boolean;
+}
 
 export interface StoryApi {
   updateTitle: (title: string) => Promise<{ ok: boolean; detail?: string | undefined }>;
@@ -31,8 +38,11 @@ export interface StoryApi {
     conflicts?: Array<{ id?: string; description?: string; resolution?: string }>;
     language?: string;
   }) => Promise<{ ok: boolean; detail?: string | undefined }>;
-  getContent: () => Promise<{ ok: boolean; content: string }>;
-  updateContent: (content: string) => Promise<{ ok: boolean }>;
+  getContent: () => Promise<RevisionedStoryContentResponse>;
+  updateContent: (
+    content: string,
+    options?: ContentWriteOptions
+  ) => Promise<StoryContentWriteResponse>;
   computeSourcebookRelevance: (
     chapId: string,
     currentText: string
@@ -107,21 +117,24 @@ export const createStoryApi = (projectName: string): StoryApi => ({
     );
   },
 
-  getContent: async (): Promise<{ ok: boolean; content: string }> => {
-    return fetchJson<StoryContentResponse>(
+  getContent: async (): Promise<RevisionedStoryContentResponse> => {
+    return fetchJson<RevisionedStoryContentResponse>(
       projectEndpoint(projectName, '/story/content'),
       undefined,
       'Failed to get story content'
     );
   },
 
-  updateContent: async (content: string): Promise<{ ok: boolean }> => {
-    return fetchJson<{ ok: boolean }>(
+  updateContent: async (
+    content: string,
+    options?: ContentWriteOptions
+  ): Promise<StoryContentWriteResponse> => {
+    return fetchJson<StoryContentWriteResponse>(
       projectEndpoint(projectName, '/story/content'),
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, ...options }),
       },
       'Failed to update story content'
     );

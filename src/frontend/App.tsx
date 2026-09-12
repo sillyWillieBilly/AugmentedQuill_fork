@@ -79,6 +79,7 @@ const App: React.FC = () => {
     deleteChapter,
     loadStory,
     refreshStory,
+    reloadDocument,
     undo,
     redo,
     undoSteps,
@@ -515,6 +516,7 @@ const App: React.FC = () => {
   );
 
   const { sidebarControls, appMainLayoutProps } = useAppMainLayoutProps({
+    reloadDocument,
     viewControls: {
       viewMode,
       setViewMode,

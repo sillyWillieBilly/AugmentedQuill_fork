@@ -13,7 +13,7 @@
  */
 
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import { DEMO_PROJECT, gotoApp, closeDialog } from './support/helpers';
+import { DEMO_PROJECT, gotoApp, closeDialog, openProjectChat } from './support/helpers';
 
 function composer(page: Page): Locator {
   return page.locator('[aria-label="Chat message"]');
@@ -23,6 +23,7 @@ test.describe('The AI Chat Assistant', () => {
   test.beforeEach(async ({ page }: { page: Page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await gotoApp(page, DEMO_PROJECT);
+    await openProjectChat(page);
   });
 
   test('sending a message streams an assistant response', async ({

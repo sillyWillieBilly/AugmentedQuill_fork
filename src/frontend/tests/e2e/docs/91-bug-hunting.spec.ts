@@ -21,6 +21,7 @@ import {
   SERIES_PROJECT,
   gotoApp,
   openSidebar,
+  openProjectChat,
   openSettings,
   closeDialog,
 } from './support/helpers';
@@ -30,6 +31,7 @@ test.describe('Bug hunting — destructive flows', () => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await gotoApp(page, DEMO_PROJECT);
     await openSidebar(page);
+    await openProjectChat(page);
   });
 
   // The header Undo button must revert the last edit (like Ctrl+Z).

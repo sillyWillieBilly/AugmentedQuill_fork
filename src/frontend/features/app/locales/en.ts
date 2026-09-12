@@ -9,8 +9,13 @@
  * Purpose: Translation resources for the en locale.
  */
 
+import { workshopEnglish } from './workshop';
+import { loreEnglish } from './lore';
+
 export const en = {
   translation: {
+    ...workshopEnglish,
+    ...loreEnglish,
     Settings: 'Settings',
     'GUI Language': 'GUI Language',
     Projects: 'Projects',

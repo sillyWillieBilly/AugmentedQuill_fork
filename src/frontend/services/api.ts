@@ -23,6 +23,9 @@ import { createSearchApi } from './apiClients/search';
 import { createScenesApi } from './apiClients/scenes';
 import { createAnnotationsApi } from './apiClients/annotations';
 import { createViewStateApi } from './apiClients/viewState';
+import { createWorkshopApi } from './apiClients/workshop';
+import { createLoreApi } from './apiClients/lore';
+import { createContentRecoveryApi } from './apiClients/contentRecovery';
 import { useStoryStore } from '../stores/storyStore';
 
 type ProjectApiClients = {
@@ -37,6 +40,9 @@ type ProjectApiClients = {
   scenes: ReturnType<typeof createScenesApi>;
   annotations: ReturnType<typeof createAnnotationsApi>;
   viewState: ReturnType<typeof createViewStateApi>;
+  workshop: ReturnType<typeof createWorkshopApi>;
+  lore: ReturnType<typeof createLoreApi>;
+  contentRecovery: ReturnType<typeof createContentRecoveryApi>;
 };
 
 const projectApiCache = new Map<string, ProjectApiClients>();
@@ -72,6 +78,9 @@ function forProject(projectName: string): ProjectApiClients {
     scenes: createScenesApi(projectName),
     annotations: createAnnotationsApi(projectName),
     viewState: createViewStateApi(projectName),
+    workshop: createWorkshopApi(projectName),
+    lore: createLoreApi(projectName),
+    contentRecovery: createContentRecoveryApi(projectName),
   };
   projectApiCache.set(projectName, scoped);
   return scoped;

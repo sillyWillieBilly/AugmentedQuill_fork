@@ -29,6 +29,7 @@ import type {
   SuggestionGenerationMode,
 } from '../../types';
 import { useStoryStore } from '../../stores/storyStore';
+import type { ReloadDocumentResult } from '../story/useStory';
 
 type AppHeaderProps = React.ComponentProps<typeof AppHeader>;
 type AppMainLayoutProps = React.ComponentProps<typeof AppMainLayout>;
@@ -72,6 +73,7 @@ type UseAppHeaderPropsParams = {
 };
 
 type UseAppMainLayoutPropsParams = {
+  reloadDocument?: () => Promise<ReloadDocumentResult>;
   viewControls: HeaderViewControls;
   formatControls: HeaderFormatControls;
   isSidebarOpen: boolean;
@@ -294,6 +296,7 @@ export function useAppMainLayoutProps(params: UseAppMainLayoutPropsParams): {
   // values rather than the whole params object (which is a new reference every
   // render and would defeat all memoization).
   const {
+    reloadDocument,
     isSidebarOpen,
     setIsSidebarOpen,
     currentChapterId,
@@ -504,6 +507,11 @@ export function useAppMainLayoutProps(params: UseAppMainLayoutPropsParams): {
       onAppRedo,
     ]
   );
+  const reloadEditor = useCallback(async (): Promise<void> => {
+    if (!reloadDocument) throw new Error('Document reload is unavailable');
+    const result = await reloadDocument();
+    if (!result.ok) throw new Error(result.error || 'Document reload failed');
+  }, [reloadDocument]);
   const editorControls = useMemo(
     () => ({
       currentChapter,
@@ -514,6 +522,7 @@ export function useAppMainLayoutProps(params: UseAppMainLayoutPropsParams): {
       setEditorSettings,
       viewMode,
       updateChapter: editorUpdateChapter,
+      onReloadContent: reloadDocument ? reloadEditor : undefined,
       suggestionControls: {
         continuations,
         suggestionMode,
@@ -542,6 +551,8 @@ export function useAppMainLayoutProps(params: UseAppMainLayoutPropsParams): {
     }),
     [
       editorUpdateChapter,
+      reloadDocument,
+      reloadEditor,
       currentChapter,
       isChapterLoading,
       editorRef,

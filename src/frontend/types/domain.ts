@@ -22,6 +22,7 @@ export interface Chapter {
   content: string;
   filename?: string;
   book_id?: string;
+  document_key?: string;
   notes?: string;
   private_notes?: string;
   conflicts?: Conflict[];
@@ -35,6 +36,7 @@ export interface WritingUnit {
   content: string;
   filename?: string;
   book_id?: string;
+  document_key?: string;
   notes?: string;
   private_notes?: string;
   conflicts?: Conflict[];
