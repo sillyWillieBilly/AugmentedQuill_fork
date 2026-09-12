@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest';
 import {
   mapSelectStoryToState,
   mapStoryBooks,
+  mapApiChapters,
   reanchorChapterSelection,
 } from './storyMappers';
 import { Chapter } from '../../types';
@@ -69,6 +70,41 @@ describe('storyMappers reanchorChapterSelection', () => {
 });
 
 describe('storyMappers mapSelectStoryToState', () => {
+  it('preserves linked file identity and save destination after selecting the project', () => {
+    const chapters = mapApiChapters([
+      {
+        id: 1,
+        title: 'Chapter 1',
+        summary: '',
+        notes: '',
+        private_notes: '',
+        conflicts: [],
+        filename: 'chapter-01.md',
+        document_key: 'linked/book-id/chapter-01.md',
+        source_path: '/books/novel/chapter-01.md',
+        manuscript_status: 'Current rewrite',
+      },
+    ]);
+    const mapped = mapSelectStoryToState(
+      'linked-book',
+      {
+        storage_mode: 'linked-markdown',
+        source_root: '/books/novel',
+      },
+      chapters,
+      '1',
+      [],
+      'sample-project'
+    );
+    expect(mapped.storage_mode).toBe('linked-markdown');
+    expect(mapped.source_root).toBe('/books/novel');
+    expect(mapped.chapters[0]).toMatchObject({
+      document_key: 'linked/book-id/chapter-01.md',
+      source_path: '/books/novel/chapter-01.md',
+      manuscript_status: 'Current rewrite',
+    });
+  });
+
   it('maps books with stable IDs when story book id is missing', () => {
     const mapped = mapStoryBooks([
       { id: null, folder: 'book-folder-1', title: 'Book One' },

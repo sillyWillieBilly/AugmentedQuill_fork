@@ -202,6 +202,11 @@ async def manage_project(
 )
 async def delete_book(params: DeleteBookParams, payload: dict, mutations: dict) -> Any:
     """Delete Book."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    active = get_active_project_dir()
+    if active is not None:
+        reject_linked_mutation(active, "delete-book")
     if not params.confirm:
         return {
             "status": "confirmation_required",

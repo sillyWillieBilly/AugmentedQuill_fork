@@ -1730,6 +1730,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/projects/{project_name}/manuscript/link': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Api Get Manuscript Link
+     * @description Return the explicit external manuscript allowlist.
+     */
+    get: operations['api_get_manuscript_link_api_v1_projects__project_name__manuscript_link_get'];
+    put?: never;
+    /**
+     * Api Create Manuscript Link
+     * @description Link selected Markdown/text files without copying or modifying them.
+     */
+    post: operations['api_create_manuscript_link_api_v1_projects__project_name__manuscript_link_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/projects/{project_name}/search': {
     parameters: {
       query?: never;
@@ -2362,6 +2386,10 @@ export interface components {
       revision: string;
       /** Document Key */
       document_key: string;
+      /** Source Path */
+      source_path?: string | null;
+      /** Manuscript Status */
+      manuscript_status?: string | null;
     };
     /**
      * ChapterMetadataUpdate
@@ -2402,6 +2430,10 @@ export interface components {
       book_id?: string | null;
       /** Document Key */
       document_key?: string | null;
+      /** Source Path */
+      source_path?: string | null;
+      /** Manuscript Status */
+      manuscript_status?: string | null;
     };
     /**
      * ChapterSummaryUpdate
@@ -3252,6 +3284,40 @@ export interface components {
       models: string[];
       /** Detail */
       detail?: string | null;
+    };
+    /**
+     * ManuscriptLinkRequest
+     * @description Request an explicit source-file allowlist for an existing project.
+     */
+    ManuscriptLinkRequest: {
+      /** Source Root */
+      source_root: string;
+      /** Files */
+      files: string[];
+      /** Excluded */
+      excluded?: {
+        [key: string]: unknown;
+      }[];
+    };
+    /**
+     * ManuscriptLinkResponse
+     * @description A lossless link manifest projection returned by the API.
+     */
+    ManuscriptLinkResponse: {
+      /** Schema Version */
+      schema_version: number;
+      /** Kind */
+      kind: string;
+      /** Source Root */
+      source_root: string;
+      /** Entries */
+      entries: {
+        [key: string]: unknown;
+      }[];
+      /** Excluded */
+      excluded: {
+        [key: string]: unknown;
+      }[];
     };
     /**
      * ModelCapabilities
@@ -4548,6 +4614,10 @@ export interface components {
       private_notes?: string | null;
       /** Conflicts */
       conflicts?: unknown[] | null;
+      /** Source Path */
+      source_path?: string | null;
+      /** Manuscript Status */
+      manuscript_status?: string | null;
     };
     /**
      * StoryContentResponse
@@ -4620,6 +4690,10 @@ export interface components {
       chapters?: components['schemas']['StoryChapterSummary'][] | null;
       /** Scenes */
       scenes?: components['schemas']['Scene'][] | null;
+      /** Storage Mode */
+      storage_mode?: string | null;
+      /** Source Root */
+      source_root?: string | null;
     };
     /**
      * StorySourcebookEntry
@@ -8034,6 +8108,74 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['LoreSelectionResult'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_get_manuscript_link_api_v1_projects__project_name__manuscript_link_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManuscriptLinkResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  api_create_manuscript_link_api_v1_projects__project_name__manuscript_link_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Directory name of the project */
+        project_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ManuscriptLinkRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ManuscriptLinkResponse'];
         };
       };
       /** @description Validation Error */

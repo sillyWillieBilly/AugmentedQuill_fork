@@ -139,6 +139,8 @@ export const mapSelectStoryToState = (
     chapters: chaptersWithPreservedState,
     draft: null,
     projectType: normalizeProjectType(story.project_type ?? undefined),
+    storage_mode: story.storage_mode ?? undefined,
+    source_root: story.source_root ?? undefined,
     language: story.language || 'en',
     books: mapStoryBooks(story.books),
     sourcebook: mapStorySourcebook(story.sourcebook),

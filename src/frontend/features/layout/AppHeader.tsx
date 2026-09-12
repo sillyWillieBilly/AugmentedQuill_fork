@@ -41,6 +41,7 @@ import {
   HeaderSidebarControls,
 } from './layoutControlTypes';
 import type { AppTheme } from '../../types/ui';
+import { useStoryMeta } from '../../stores/storyStore';
 
 type AppHeaderProps = {
   storyTitle: string;
@@ -197,6 +198,7 @@ const HeaderLeftControls: React.FC<HeaderLeftControlsProps> = ({
   t,
 }: HeaderLeftControlsProps) => {
   const { isLight, textMain } = useTheme();
+  const linkedMarkdown: boolean = useStoryMeta().storage_mode === 'linked-markdown';
   const { isSidebarOpen, setIsSidebarOpen } = sidebarControls;
   const { setIsSettingsOpen } = settingsControls;
   const {
@@ -371,13 +373,20 @@ const HeaderLeftControls: React.FC<HeaderLeftControlsProps> = ({
             />
           )}
         </div>
-        <CheckpointsMenu hasUnsavedChanges={canUndo} confirm={confirm} />
+        {!linkedMarkdown && (
+          <CheckpointsMenu hasUnsavedChanges={canUndo} confirm={confirm} />
+        )}
         <Button
           theme={currentTheme}
           variant="ghost"
           size="sm"
           onClick={onOpenSearch}
-          title={t('Search and Replace (Ctrl+F)')}
+          disabled={linkedMarkdown}
+          title={t(
+            linkedMarkdown
+              ? 'workshop.linked.workshopOnly'
+              : 'Search and Replace (Ctrl+F)'
+          )}
           aria-label={t('Search and Replace')}
           className="ml-1"
         >

@@ -23,6 +23,7 @@ from augmentedquill.core.config import load_machine_config
 from augmentedquill.core.prompts import load_model_prompt_overrides
 from augmentedquill.models.workshop import (
     WorkshopAlternative,
+    WorkshopContextBudget,
     WorkshopContextInspector,
     WorkshopDiscussRequest,
     WorkshopDiscussResponse,
@@ -63,6 +64,30 @@ class WorkshopTargetConflict(BadRequestError):
 
 class WorkshopOutputError(UpstreamError):
     """Raised when a provider returns unsafe or malformed Workshop output."""
+
+
+def _configured_workshop_budget(
+    budget: WorkshopContextBudget, machine: dict[str, Any], selected_name: str | None
+) -> WorkshopContextBudget:
+    """Use configured reply space unless the caller explicitly sets a budget."""
+    if "output_tokens" in budget.model_fields_set:
+        return budget
+    models = (machine.get("openai") or {}).get("models") or []
+    for model in models:
+        if not isinstance(model, dict) or model.get("name") != selected_name:
+            continue
+        configured = model.get("max_tokens")
+        if (
+            isinstance(configured, int)
+            and not isinstance(configured, bool)
+            and configured > 0
+        ):
+            # Keep the existing Workshop API bounds and account for the same
+            # reserve in both prompt assembly and the provider request.
+            return budget.model_copy(
+                update={"output_tokens": min(4096, max(128, configured))}
+            )
+    return budget
 
 
 def _workshop_timeout_seconds(value: Any) -> float:
@@ -286,6 +311,7 @@ async def discuss_workshop(
             "Unable to resolve the configured Workshop model"
         ) from exc
 
+    budget = _configured_workshop_budget(request.budget, machine, selected_name)
     try:
         prompt = build_workshop_prompt(
             target=request.target,
@@ -299,7 +325,7 @@ async def discuss_workshop(
             timeline_position=request.timeline_position,
             lore_query=request.lore_query,
             project_dir=project_dir,
-            budget=request.budget,
+            budget=budget,
         )
     except ReadonlyContextError as exc:
         raise BadRequestError(str(exc)) from exc
@@ -319,7 +345,7 @@ async def discuss_workshop(
                 tools=None,
                 tool_choice=None,
                 temperature=0.35,
-                max_tokens=request.budget.output_tokens,
+                max_tokens=budget.output_tokens,
                 extra_body=None,
                 skip_validation=False,
             ),

@@ -58,4 +58,6 @@ async def api_chapter_content(
         "private_notes": chapter["private_notes"],
         "conflicts": chapter["conflicts"],
         "book_id": chapter["book_id"],
+        "source_path": chapter.get("source_path"),
+        "manuscript_status": chapter.get("manuscript_status"),
     }

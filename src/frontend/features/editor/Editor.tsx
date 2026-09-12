@@ -55,6 +55,7 @@ import {
 } from './annotationPlugin';
 import { transferInternalMarkers, stripInlineInternalMarkers } from './internalTags';
 import { EditorSaveBar } from './EditorSaveBar';
+import { LinkedDocumentBar } from './LinkedDocumentBar';
 import { writeLocalDraft, type LocalDraft } from './localDraft';
 import { getSaveStatus, useSaveStatusStore } from '../../stores/saveStatusStore';
 import { contentDocumentKey } from '../../services/contentRevision';
@@ -549,10 +550,11 @@ export const Editor = React.memo(
       const {
         onAiAction,
         isAiLoading,
-        isWritingAvailable = true,
+        isWritingAvailable: hasWritingModel = true,
         onCancelAiAction,
         isProseStreaming: _isProseStreaming = false,
       } = aiControls;
+      const isWritingAvailable = hasWritingModel && !chapter.source_path;
 
       const {
         scrollContainerRef,
@@ -577,10 +579,12 @@ export const Editor = React.memo(
           contextDebounceMs: 150,
         });
 
-      const writingUnavailableReason =
-        'This action is unavailable because no working WRITING model is configured.';
+      const writingUnavailableReason = chapter.source_path
+        ? t('workshop.linked.workshopOnly')
+        : 'This action is unavailable because no working WRITING model is configured.';
 
       const handleSuggestionButtonClick = (): void => {
+        if (!isWritingAvailable) return;
         if (isSuggesting || isAiLoading) {
           if (isSuggesting) {
             suggestionControls.onCancelSuggestion?.();
@@ -682,6 +686,7 @@ export const Editor = React.memo(
 
           // Trigger: Ctrl+Enter / Cmd+Enter
           if (key === 'Enter' && (ctrlKey || metaKey)) {
+            if (!isWritingAvailable) return false;
             const cursor = getEditorCaretOffset() ?? chapter.content.length;
             e.preventDefault();
             stopPropagationIfAvailable(e);
@@ -734,6 +739,7 @@ export const Editor = React.memo(
         },
         [
           isSuggestionMode,
+          isWritingAvailable,
           continuations.length,
           isSuggesting,
           onKeyboardSuggestionAction,
@@ -1244,6 +1250,10 @@ export const Editor = React.memo(
             className={`flex flex-col h-full w-full overflow-hidden relative ${editorContainerBg}`}
           >
             <EditorMobileToolbar />
+            <LinkedDocumentBar
+              sourcePath={chapter.source_path}
+              manuscriptStatus={chapter.manuscript_status}
+            />
             <EditorSaveBar
               key={documentIdentity}
               projectId={editorProjectId}

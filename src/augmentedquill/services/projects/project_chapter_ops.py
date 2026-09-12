@@ -32,6 +32,16 @@ def write_chapter_content_in_project(
     chap_id: int, content: str, active: Path | None = None
 ) -> None:
     """Write content to a chapter by its ID."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    if active is None:
+        from augmentedquill.services.projects.projects import get_active_project_dir
+
+        active = get_active_project_dir()
+    if active is not None:
+        reject_linked_mutation(
+            active, "legacy chapter writing; use checked editor saves"
+        )
     _, path, _ = _chapter_by_id_or_404(chap_id, active=active)
     existing_content = path.read_text(encoding="utf-8") if path.exists() else ""
     validate_scene_marker_tokens(existing_content)
@@ -240,6 +250,9 @@ def write_chapter_title_in_project(active: Path, chap_id: int, title: str) -> No
 
 def delete_chapter_in_project(active: Path, chap_id: int) -> None:
     """Delete a chapter file and remove its metadata from story.json."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(active, "delete-chapter")
     story_path = active / "story.json"
     story = load_story_config(story_path) or {}
     if story.get("project_type") == "short-story":

@@ -95,7 +95,10 @@ async def api_story_settings(request: Request, project_dir: ProjectDep) -> JSONR
 
         return JSONResponse(
             status_code=200,
-            content={"ok": True, "story": normalize_story_for_frontend(story)},
+            content={
+                "ok": True,
+                "story": normalize_story_for_frontend(story, active=project_dir),
+            },
         )
 
     return await _dispatch_metadata_request(request, _handler)

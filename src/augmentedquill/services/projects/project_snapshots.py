@@ -55,6 +55,9 @@ def capture_project_snapshot(project_dir: Path) -> dict[str, str]:
 
 def restore_project_snapshot(project_dir: Path, snapshot: dict[str, str]) -> Any:
     """Replace project files with the exact snapshot content."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(project_dir, "legacy snapshot restore")
     resolved_root = project_dir.resolve()
     expected = set(snapshot.keys())
     current = {str(rel): rel for rel in iter_project_files(project_dir)}
@@ -80,6 +83,9 @@ def restore_project_snapshot(project_dir: Path, snapshot: dict[str, str]) -> Any
 
 def snapshot_to_directory(project_dir: Path, target_dir: Path) -> Any:
     """Copy all snapshot-able project files to a target directory structure."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(project_dir, "legacy checkpoint creation")
     # Resolve the project root and target directory for safety comparisons.
     resolved_root = project_dir.resolve()
     resolved_target = target_dir.resolve()
@@ -117,6 +123,9 @@ def snapshot_to_directory(project_dir: Path, target_dir: Path) -> Any:
 
 def restore_from_directory(project_dir: Path, source_dir: Path) -> Any:
     """Restore project state from a checkpoint directory."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(project_dir, "legacy checkpoint restore")
     # Resolve the project root and source directory for safety comparisons.
     resolved_root = project_dir.resolve()
     resolved_source = source_dir.resolve()

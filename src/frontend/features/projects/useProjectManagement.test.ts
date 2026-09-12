@@ -17,8 +17,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProjectManagement } from './useProjectManagement';
 import { api } from '../../services/api';
 import { useChatStore } from '../../stores/chatStore';
+import { StoryStoreState, useStoryStore } from '../../stores/storyStore';
+import { useUIStore } from '../../stores/uiStore';
 
 const scopedChatSaveMocks = new Map<string, ReturnType<typeof vi.fn>>();
+const scopedChatListMocks = new Map<string, ReturnType<typeof vi.fn>>();
 
 const getScopedChatSaveMock = (projectId: string): ReturnType<typeof vi.fn> => {
   const existing = scopedChatSaveMocks.get(projectId);
@@ -31,11 +34,23 @@ const getScopedChatSaveMock = (projectId: string): ReturnType<typeof vi.fn> => {
   return created;
 };
 
+const getScopedChatListMock = (projectId: string): ReturnType<typeof vi.fn> => {
+  const existing = scopedChatListMocks.get(projectId);
+  if (existing) {
+    return existing;
+  }
+
+  const created = vi.fn().mockResolvedValue([]);
+  scopedChatListMocks.set(projectId, created);
+  return created;
+};
+
 vi.mock('../../services/api', () => ({
   api: {
     forProject: vi.fn((projectId: string) => ({
       chat: {
         save: getScopedChatSaveMock(projectId),
+        list: getScopedChatListMock(projectId),
       },
     })),
     projects: {
@@ -74,6 +89,15 @@ const baseStory = {
 function setupProjectManagementMocks(): void {
   vi.clearAllMocks();
   scopedChatSaveMocks.clear();
+  scopedChatListMocks.clear();
+  useStoryStore.setState((state: StoryStoreState) => ({
+    story: {
+      ...state.story,
+      id: baseStory.id,
+      storage_mode: undefined,
+    },
+  }));
+  useUIStore.getState().setWorkspaceMode('page');
   const store: Record<string, string> = {};
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => (key in store ? store[key] : null),
@@ -136,9 +160,6 @@ describe('useProjectManagement: load and reset', () => {
     vi.mocked(api.projects.select).mockResolvedValue({ ok: true } as unknown as Awaited<
       ReturnType<typeof api.projects.select>
     >);
-    vi.mocked(api.chat.list).mockResolvedValue(
-      [] as unknown as Awaited<ReturnType<typeof api.chat.list>>
-    );
 
     const refreshStory = vi.fn().mockResolvedValue(undefined);
     const handleNewChat = vi.fn();
@@ -176,13 +197,13 @@ describe('useProjectManagement: load and reset', () => {
     vi.mocked(api.projects.select).mockResolvedValue({ ok: true } as unknown as Awaited<
       ReturnType<typeof api.projects.select>
     >);
-    vi.mocked(api.chat.list).mockResolvedValue([
+    getScopedChatListMock('p1').mockResolvedValue([
       {
         id: 'chat-continue',
         name: 'Continue',
         messages: [],
       },
-    ] as unknown as Awaited<ReturnType<typeof api.chat.list>>);
+    ]);
 
     const handleSelectChat = vi.fn().mockResolvedValue(undefined);
 
@@ -265,13 +286,15 @@ describe('useProjectManagement: load and reset', () => {
     vi.mocked(api.projects.select).mockResolvedValue({ ok: true } as unknown as Awaited<
       ReturnType<typeof api.projects.select>
     >);
-    vi.mocked(api.chat.list).mockResolvedValue([
+    getScopedChatListMock(
+      'Back to the Future_ The Chronological Saga'
+    ).mockResolvedValue([
       {
         id: 'chat-continue',
         name: 'Continue',
         messages: [],
       },
-    ] as unknown as Awaited<ReturnType<typeof api.chat.list>>);
+    ]);
 
     useChatStore.setState({
       currentChatId: 'chat-continue',
@@ -329,6 +352,68 @@ describe('useProjectManagement: load and reset', () => {
       'Back to the Future_ The Chronological Saga'
     );
     expect(handleSelectChat).toHaveBeenCalledWith('chat-continue');
+  });
+
+  it('skips legacy chat persistence and clears chat state for linked Markdown targets', async () => {
+    vi.mocked(api.projects.select).mockResolvedValue({
+      ok: true,
+      story: { storage_mode: 'linked-markdown' },
+    } as unknown as Awaited<ReturnType<typeof api.projects.select>>);
+
+    useChatStore.setState({
+      currentChatId: 'chat-continue',
+      chatMessages: [
+        {
+          id: 'm1',
+          role: 'user',
+          text: 'continue this thread',
+        },
+      ],
+      isIncognito: false,
+      systemPrompt: 'system prompt',
+      allowWebSearch: false,
+      scratchpad: 'scratchpad',
+      projectContextRevision: 7,
+      chatHistoryList: [{ id: 'old-chat', name: 'Old', messages: [] }],
+    });
+    useUIStore.getState().setWorkspaceMode('split');
+
+    const { result } = renderHook(() =>
+      useProjectManagement({
+        storyId: baseStory.id,
+        storyTitle: baseStory.title,
+        storyProjectType: baseStory.projectType,
+        storyLanguage: baseStory.language ?? 'en',
+        storySummary: baseStory.summary,
+        storyStyleTags: baseStory.styleTags,
+        storyConflicts: baseStory.conflicts,
+        refreshStory: vi.fn().mockResolvedValue(undefined),
+        loadStory: vi.fn(),
+        updateStoryMetadata: vi.fn().mockResolvedValue(undefined),
+        handleSelectChat: vi.fn().mockResolvedValue(undefined),
+        handleNewChat: vi.fn(),
+        getErrorMessage: () => 'error',
+        isSettingsOpen: false,
+        setIsSettingsOpen: vi.fn(),
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleLoadProject('linked-target', {
+        preserveActiveChatSession: true,
+      });
+    });
+
+    expect(scopedChatSaveMocks.get('active-story')).toHaveBeenCalledWith(
+      'chat-continue',
+      expect.objectContaining({ scratchpad: 'scratchpad' })
+    );
+    expect(scopedChatSaveMocks.has('linked-target')).toBe(false);
+    expect(scopedChatListMocks.has('linked-target')).toBe(false);
+    expect(useChatStore.getState().chatHistoryList).toEqual([]);
+    expect(useChatStore.getState().currentChatId).toBeNull();
+    expect(useChatStore.getState().chatMessages).toEqual([]);
+    expect(useUIStore.getState().workspaceMode).toBe('page');
   });
 });
 

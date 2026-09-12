@@ -65,7 +65,7 @@ def _sanitize_scene_prose_links_for_frontend(scene_value: Any) -> Any:
     return scene_copy
 
 
-def normalize_story_for_frontend(story: dict) -> dict:
+def normalize_story_for_frontend(story: dict, active: Any = None) -> dict:
     """Prepare story data for the frontend by converting internal storage formats
     (like dict-based sourcebook) back into frontend-friendly formats (like sorted lists).
     Also ensures missing internal IDs (which are not stored on disk) are injected
@@ -74,6 +74,32 @@ def normalize_story_for_frontend(story: dict) -> dict:
     if not story:
         return {}
     res = story.copy()
+
+    # Linked source paths and storage mode are transport metadata.  They are
+    # read from the sidecar capability manifest and are never written back to
+    # the author's Markdown or injected into story.json by this projection.
+    active_project = active if active is not None else get_active_project_dir()
+    if active_project is not None:
+        from augmentedquill.services.projects.manuscript_link import (
+            has_link_manifest,
+            linked_documents,
+            linked_project_metadata,
+        )
+
+        if has_link_manifest(active_project):
+            res.update(linked_project_metadata(active_project))
+            linked = linked_documents(active_project)
+            chapters = res.get("chapters")
+            if isinstance(chapters, list):
+                for index, document in enumerate(linked):
+                    if index >= len(chapters) or not isinstance(chapters[index], dict):
+                        continue
+                    chapters[index].update(
+                        {
+                            "source_path": str(document.path),
+                            "manuscript_status": document.status,
+                        }
+                    )
 
     # ensure language field is surfaced; frontend may use it to display
     # or to pass back when creating new content.
@@ -95,29 +121,23 @@ def normalize_story_for_frontend(story: dict) -> dict:
     # when titles change.
     if res.get("project_type") == "series" and "books" in res:
         books = res["books"]
-        if isinstance(books, list):
-            from augmentedquill.services.projects.projects import get_active_project_dir
+        if isinstance(books, list) and active_project:
+            books_dir = active_project / "books"
+            if books_dir.exists():
+                folders = sorted([d.name for d in books_dir.iterdir() if d.is_dir()])
 
-            active = get_active_project_dir()
-            if active:
-                books_dir = active / "books"
-                if books_dir.exists():
-                    folders = sorted(
-                        [d.name for d in books_dir.iterdir() if d.is_dir()]
-                    )
+                new_books = []
+                for i, book in enumerate(books):
+                    if isinstance(book, dict):
+                        b_copy = book.copy()
+                        if not b_copy.get("id"):
+                            b_copy["id"] = b_copy.get("folder")
 
-                    new_books = []
-                    for i, book in enumerate(books):
-                        if isinstance(book, dict):
-                            b_copy = book.copy()
-                            if not b_copy.get("id"):
-                                b_copy["id"] = b_copy.get("folder")
-
-                            # Fallback for books that predate explicit IDs.
-                            if not b_copy.get("id") and i < len(folders):
-                                b_copy["id"] = folders[i]
-                            new_books.append(b_copy)
-                    res["books"] = new_books
+                        # Fallback for books that predate explicit IDs.
+                        if not b_copy.get("id") and i < len(folders):
+                            b_copy["id"] = folders[i]
+                        new_books.append(b_copy)
+                res["books"] = new_books
 
     # Scenes: normalise from dict (on-disk format) to sorted list for frontend.
     scenes_raw = res.get("scenes", {})
@@ -174,7 +194,7 @@ def _project_overview(include_notes: bool = False) -> dict:
     raw_story = (
         load_story_config(active / "story.json") if active is not None else {}
     ) or {}
-    story = normalize_story_for_frontend(raw_story)
+    story = normalize_story_for_frontend(raw_story, active=active)
     p_type = story.get("project_type", "novel")
 
     base_info = {
@@ -185,6 +205,14 @@ def _project_overview(include_notes: bool = False) -> dict:
         "story_summary": story.get("story_summary") or "",
         "notes": story.get("notes") or "",
     }
+    if active is not None:
+        from augmentedquill.services.projects.manuscript_link import (
+            has_link_manifest,
+            linked_project_metadata,
+        )
+
+        if has_link_manifest(active):
+            base_info.update(linked_project_metadata(active))
 
     if p_type == "short-story":
         draft = {

@@ -25,6 +25,9 @@ def create_new_chapter_in_project(
     active: Path, title: str = "", book_id: str | None = None
 ) -> int:
     """Create a new chapter file and update story.json within active project path."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(active, "create-chapter")
     story_path = active / "story.json"
     story = load_story_config(story_path) or {}
     project_type = story.get("project_type", "novel")
@@ -135,6 +138,9 @@ def create_new_chapter_in_project(
 
 def create_new_book_in_project(active: Path, title: str) -> str:
     """Create a new book in a series project under active project path."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(active, "create-book")
     story_path = active / "story.json"
     story = load_story_config(story_path) or {}
     if story.get("project_type") != "series":
@@ -175,6 +181,9 @@ def create_new_book_in_project(active: Path, title: str) -> str:
 
 def change_project_type_in_project(active: Path, new_type: str) -> tuple[bool, str]:
     """Convert active project to a new type in-place."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(active, "change-project-type")
     story_path = active / "story.json"
     story = load_story_config(story_path) or {}
     old_type = story.get("project_type", "novel")

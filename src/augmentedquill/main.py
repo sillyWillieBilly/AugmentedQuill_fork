@@ -27,7 +27,9 @@ from augmentedquill.api.v1.chat import router as chat_router
 from augmentedquill.api.v1.checkpoints import router as checkpoints_router
 from augmentedquill.api.v1.content_recovery import router as content_recovery_router
 from augmentedquill.api.v1.debug import router as debug_router
+from augmentedquill.api.v1.linked_guard import linked_request_guard
 from augmentedquill.api.v1.lore import router as lore_router
+from augmentedquill.api.v1.manuscript import router as manuscript_router
 from augmentedquill.api.v1.projects import router as projects_router
 from augmentedquill.api.v1.scenes import router as scenes_router
 from augmentedquill.api.v1.search import router as search_router
@@ -100,6 +102,12 @@ def create_app() -> FastAPI:
         """
 
         path = request.scope.get("path", "")
+        # The guard recognizes both explicit and legacy project routes. Run
+        # it before every early return so global chat/book operations cannot
+        # bypass the linked manuscript boundary.
+        blocked = linked_request_guard(request)
+        if blocked is not None:
+            return blocked
         if not path.startswith("/api/v1/") or path.startswith("/api/v1/projects/"):
             return await call_next(request)
 
@@ -160,6 +168,7 @@ def create_app() -> FastAPI:
     api_v1_router.include_router(sourcebook_router)
     api_v1_router.include_router(workshop_router)
     api_v1_router.include_router(lore_router)
+    api_v1_router.include_router(manuscript_router)
     api_v1_router.include_router(search_router)
     api_v1_router.include_router(scenes_router)
     api_v1_router.include_router(annotations_router)

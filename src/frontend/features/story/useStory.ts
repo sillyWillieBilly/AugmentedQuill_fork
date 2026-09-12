@@ -195,6 +195,8 @@ export const buildInitialStoryState = (
   draft:
     story.project_type === 'short-story' ? buildStoryDraft(projectId, story) : null,
   projectType: normalizeProjectType(story.project_type ?? undefined),
+  storage_mode: story.storage_mode ?? undefined,
+  source_root: story.source_root ?? undefined,
   language: story.language || 'en',
   books: mapStoryBooks(story.books),
   sourcebook: mapStorySourcebook(story.sourcebook),
@@ -473,18 +475,22 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
 
           // Scenes are project-level data and are not embedded in the main story
           // payload, so refresh must explicitly reload them to avoid losing the
-          // in-memory scene list after tool-driven mutations.
-          const refreshedScenes = await projectApi.scenes
-            .list()
-            .catch((e: unknown): Scene[] => {
-              console.error('Failed to refresh scenes', e);
-              return latestStoryRef.current.scenes ?? [];
-            });
+          // in-memory scene list after tool-driven mutations.  Linked Markdown
+          // projects intentionally do not have the legacy scene store.  When a
+          // different project is being loaded, never use the previous project's
+          // scenes as a fallback after a failed request.
+          const isLinkedMarkdown = res.story.storage_mode === 'linked-markdown';
+          const refreshedScenes = isLinkedMarkdown
+            ? []
+            : await projectApi.scenes.list().catch((e: unknown): Scene[] => {
+                console.error('Failed to refresh scenes', e);
+                return latestStoryRef.current.id === currentProject
+                  ? (latestStoryRef.current.scenes ?? [])
+                  : [];
+              });
           newStory = {
             ...newStory,
-            scenes: Array.isArray(refreshedScenes)
-              ? refreshedScenes
-              : (latestStoryRef.current.scenes ?? []),
+            scenes: Array.isArray(refreshedScenes) ? refreshedScenes : [],
           };
 
           lastLoadedChapterId.current = null;
@@ -874,12 +880,14 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
           }
 
           // Load scenes in parallel with (or after) the story shape is known.
-          // Scenes are stored on the project but not embedded in the main
-          // story response, so we must fetch them explicitly.
-          const scenes = await projectApi.scenes.list().catch((e: unknown): Scene[] => {
-            console.error('Failed to load scenes', e);
-            return [];
-          });
+          // Linked Markdown projects intentionally have no legacy scene store.
+          const scenes =
+            res.story.storage_mode === 'linked-markdown'
+              ? []
+              : await projectApi.scenes.list().catch((e: unknown): Scene[] => {
+                  console.error('Failed to load scenes', e);
+                  return [];
+                });
           newStory = { ...newStory, scenes };
 
           latestStoryRef.current = newStory;
@@ -1252,15 +1260,18 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
         }
 
         const story = latestStoryRef.current;
-        const refreshedScenes = story.id
-          ? await api
-              .forProject(story.id)
-              .scenes.list()
-              .catch((e: unknown): Scene[] => {
-                console.error('Failed to refresh scenes after chapter creation', e);
-                return story.scenes ?? [];
-              })
-          : (story.scenes ?? []);
+        const refreshedScenes =
+          story.storage_mode === 'linked-markdown'
+            ? []
+            : story.id
+              ? await api
+                  .forProject(story.id)
+                  .scenes.list()
+                  .catch((e: unknown): Scene[] => {
+                    console.error('Failed to refresh scenes after chapter creation', e);
+                    return story.scenes ?? [];
+                  })
+              : (story.scenes ?? []);
         const newState: StoryState = {
           ...story,
           chapters: newChapters,
@@ -1292,15 +1303,18 @@ export const useStory = (dialogs: StoryDialogs = defaultDialogs) => {
       // Re-fetch after deletion because positional IDs can shift in series mode.
       const chaptersRes = await api.chapters.list();
       const newChapters: Chapter[] = mapApiChapters(chaptersRes.chapters);
-      const refreshedScenes = story.id
-        ? await api
-            .forProject(story.id)
-            .scenes.list()
-            .catch((e: unknown): Scene[] => {
-              console.error('Failed to refresh scenes after chapter deletion', e);
-              return story.scenes ?? [];
-            })
-        : (story.scenes ?? []);
+      const refreshedScenes =
+        story.storage_mode === 'linked-markdown'
+          ? []
+          : story.id
+            ? await api
+                .forProject(story.id)
+                .scenes.list()
+                .catch((e: unknown): Scene[] => {
+                  console.error('Failed to refresh scenes after chapter deletion', e);
+                  return story.scenes ?? [];
+                })
+            : (story.scenes ?? []);
 
       // Re-anchor via stable file/book coordinates instead of transient numeric IDs.
       let newSelection = null;

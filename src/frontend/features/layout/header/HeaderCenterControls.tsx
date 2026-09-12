@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useUIStore, UIStoreState } from '../../../stores/uiStore';
+import { useStoryMeta } from '../../../stores/storyStore';
 
 import { Button } from '../../../components/ui/Button';
 import {
@@ -461,6 +462,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
   title,
 }: HeaderCenterControlsProps) => {
   const { t } = useTranslation();
+  const linkedMarkdown: boolean = useStoryMeta().storage_mode === 'linked-markdown';
 
   const { workspaceMode, setWorkspaceMode } = useUIStore(
     useShallow((s: UIStoreState) => ({
@@ -572,6 +574,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
 
         <button
           onClick={() => setWorkspaceMode('scenes')}
+          disabled={linkedMarkdown}
           className={`flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-colors ${
             workspaceMode === 'scenes'
               ? isLight
@@ -581,7 +584,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
                 ? 'text-brand-gray-500 hover:text-brand-gray-700'
                 : 'text-brand-gray-400 hover:text-brand-gray-200 hover:bg-brand-gray-700/50'
           }`}
-          title={t('Scenes Mode')}
+          title={t(linkedMarkdown ? 'workshop.linked.workshopOnly' : 'Scenes Mode')}
         >
           <BookOpen size={14} />
           <span className="hidden xl:inline">{t('Scenes')}</span>
@@ -589,6 +592,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
 
         <button
           onClick={() => setWorkspaceMode('split')}
+          disabled={linkedMarkdown}
           className={`flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-colors ${
             workspaceMode === 'split'
               ? isLight
@@ -598,14 +602,14 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
                 ? 'text-brand-gray-500 hover:text-brand-gray-700'
                 : 'text-brand-gray-400 hover:text-brand-gray-200 hover:bg-brand-gray-700/50'
           }`}
-          title={t('Split Mode')}
+          title={t(linkedMarkdown ? 'workshop.linked.workshopOnly' : 'Split Mode')}
         >
           <Columns size={14} />
           <span className="hidden xl:inline">{t('Split')}</span>
         </button>
       </div>
 
-      {showAiControls && (
+      {showAiControls && !linkedMarkdown && (
         <div className="hidden lg:flex items-center space-x-1">
           <div className={`w-px h-4 mx-2 ${dividerColor}`} />
           <AiChapterControls

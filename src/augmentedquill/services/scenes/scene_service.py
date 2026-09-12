@@ -68,6 +68,9 @@ def _invalidate_marker_cache(project_dir: Path) -> None:
 
 def _migrate_project_latest(project_dir: Path) -> None:
     """Apply all chainable story migrations required by the scene service."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(project_dir, "legacy scenes and annotations")
     migrate_project_v3(project_dir)
     migrate_project_v4(project_dir)
     migrate_project_v5(project_dir)

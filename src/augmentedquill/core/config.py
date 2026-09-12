@@ -245,8 +245,13 @@ def load_story_config(
     json_config = load_json_file(path)
     json_config = _interpolate_env(json_config)
 
-    # Attempt to migrate any older story schema versions before normalizing.
-    if Path(path).exists():
+    # Linked manuscripts use app-local metadata, normalized in memory. Reading a
+    # chapter must not run file-writing migrations against either project tree.
+    from augmentedquill.services.projects.manuscript_link import is_linked_project
+
+    linked = path is not None and is_linked_project(Path(path).parent)
+    # Native projects retain their existing migration-on-load behaviour.
+    if path is not None and Path(path).exists() and not linked:
         try:
             from augmentedquill.updates.migrate_story_v5 import migrate_project_v5
             from augmentedquill.updates.migrate_story_v6 import migrate_project_v6

@@ -29,6 +29,8 @@ class ChapterSummary(BaseModel):
     conflicts: list[Any]
     book_id: str | None = None
     document_key: str | None = None
+    source_path: str | None = None
+    manuscript_status: str | None = None
 
 
 class ChaptersListResponse(BaseModel):
@@ -51,6 +53,8 @@ class ChapterDetailResponse(BaseModel):
     book_id: str | None = None
     revision: str
     document_key: str
+    source_path: str | None = None
+    manuscript_status: str | None = None
 
 
 class ChapterMetadataUpdate(BaseModel):

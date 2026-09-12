@@ -942,6 +942,14 @@ async def delete_chapter(
         }
 
     active = get_active_project_dir()
+    if active is None:
+        return {"error": "No active project"}
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    try:
+        reject_linked_mutation(active, "delete-chapter")
+    except ValueError as exc:
+        return {"error": str(exc)}
     _chap_id, path, _pos = _chapter_by_id_or_404(params.chap_id)
 
     story_path = active / "story.json"

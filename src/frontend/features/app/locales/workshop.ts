@@ -12,6 +12,16 @@ export const workshopEnglish = {
     tab: 'Workshop',
     chatTab: 'Project chat',
     loreTab: 'Lore',
+    linked: {
+      original: 'Editing original Markdown',
+      saveHint:
+        'Typing and applied wording save directly to this file. Watch the save status below.',
+      structure:
+        'These are the original files selected for this workspace. Drafts and alternatives keep their own status.',
+      lore: 'Open the Lore tab on the right to inspect and edit the sourced knowledge used by Workshop.',
+      workshopOnly:
+        'Use Workshop for this linked book. It discusses the passage and offers wording you can choose to apply.',
+    },
     subtitle: 'Explore the wording, with your story and lore close at hand.',
     empty:
       'Leave the caret in a sentence or select a passage. Your first message will attach that exact text.',

@@ -44,6 +44,8 @@ class StoryChapterSummary(BaseModel):
     notes: str | None = None
     private_notes: str | None = None
     conflicts: list[Any] | None = None
+    source_path: str | None = None
+    manuscript_status: str | None = None
 
 
 class StoryBook(BaseModel):
@@ -98,6 +100,8 @@ class StoryPayload(BaseModel):
     llm_prefs: StoryLLMPrefs | None = None
     chapters: list[StoryChapterSummary] | None = None
     scenes: list[Scene] | None = None
+    storage_mode: str | None = None
+    source_root: str | None = None
 
 
 # ---------------------------------------------------------------------------

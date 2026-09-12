@@ -43,7 +43,10 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
-function renderChapterList(chapters: Chapter[]): {
+function renderChapterList(
+  chapters: Chapter[],
+  linkedMarkdown: boolean = false
+): {
   onUpdateChapter: ReturnType<typeof vi.fn>;
   onSelect: ReturnType<typeof vi.fn>;
   onDelete: ReturnType<typeof vi.fn>;
@@ -59,6 +62,7 @@ function renderChapterList(chapters: Chapter[]): {
         <ChapterList
           chapters={chapters}
           projectType="novel"
+          linkedMarkdown={linkedMarkdown}
           currentChapterId={null}
           onSelect={onSelect}
           onDelete={onDelete}
@@ -91,6 +95,23 @@ afterEach(() => {
 });
 
 describe('ChapterList metadata editing', () => {
+  it('keeps linked files selectable while preventing delete, create and drag reorder', () => {
+    const { onSelect, onDelete, onCreate } = renderChapterList([mkChapter()], true);
+    const select = screen.getByRole('button', { name: /Chapter 1 Initial summary/ });
+    expect(select.getAttribute('draggable')).toBe('false');
+    fireEvent.click(select);
+    expect(onSelect).toHaveBeenCalledWith('1');
+    const remove = screen.getByTitle('Delete Chapter') as HTMLButtonElement;
+    expect(remove.disabled).toBe(true);
+    fireEvent.click(remove);
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.queryByTitle('New Chapter')).toBeNull();
+    expect(onCreate).not.toHaveBeenCalled();
+    expect((screen.getByTitle('Edit Metadata') as HTMLButtonElement).disabled).toBe(
+      false
+    );
+  });
+
   it('does not include chapter content in the metadata update payload (issue #264)', async () => {
     vi.useFakeTimers();
     const chapter = mkChapter({

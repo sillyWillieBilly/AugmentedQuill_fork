@@ -1797,7 +1797,7 @@ describe('advanceBaselineToCurrentStory', () => {
 
 describe('fetchStory: scene loading on project open', () => {
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-  const buildSelectResponse = () => ({
+  const buildSelectResponse = (storageMode?: string) => ({
     ok: true,
     story: {
       project_type: 'novel',
@@ -1811,6 +1811,7 @@ describe('fetchStory: scene loading on project open', () => {
       conflicts: [],
       books: [],
       sourcebook: [],
+      storage_mode: storageMode,
     },
   });
 
@@ -1985,6 +1986,31 @@ describe('fetchStory: scene loading on project open', () => {
     expect(result.current.story.scenes).toHaveLength(2);
     expect(result.current.story.scenes[0].id).toBe('scene-1');
     expect(result.current.story.scenes[1].id).toBe('scene-2');
+  });
+
+  it('clears native scenes when refresh changes the project to linked Markdown', async () => {
+    const scenes = buildScenes();
+    const { scenesListMock } = setupForFetch(scenes);
+
+    const { result } = renderHook(() => useStory());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.story.scenes).toHaveLength(2);
+
+    vi.mocked(api.projects.select).mockResolvedValue(
+      buildSelectResponse('linked-markdown') as unknown as Awaited<
+        ReturnType<typeof api.projects.select>
+      >
+    );
+
+    await act(async () => {
+      await result.current.refreshStory();
+    });
+
+    expect(result.current.story.scenes).toEqual([]);
+    expect(scenesListMock).toHaveBeenCalledTimes(1);
   });
 });
 

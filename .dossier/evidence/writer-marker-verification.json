@@ -10,12 +10,6 @@
   "reopened_in_browser_and_api": true,
   "request_status": 200,
   "request_duration_ms": 5290,
-  "visible_utf16_range": [
-    28,
-    39
-  ],
-  "raw_utf16_range": [
-    96,
-    107
-  ]
+  "visible_utf16_range": [28, 39],
+  "raw_utf16_range": [96, 107]
 }

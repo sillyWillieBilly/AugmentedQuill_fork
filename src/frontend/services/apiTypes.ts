@@ -159,6 +159,8 @@ export const mapChapterListItemToChapter = (item: ChapterListItem): Chapter => (
   summary: item.summary ?? undefined,
   content: '',
   filename: item.filename ?? undefined,
+  source_path: item.source_path ?? undefined,
+  manuscript_status: item.manuscript_status ?? undefined,
   book_id: item.book_id ?? undefined,
   notes: item.notes ?? undefined,
   private_notes: item.private_notes ?? undefined,

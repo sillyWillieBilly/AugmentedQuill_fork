@@ -52,6 +52,7 @@ interface StoryMetadataProps {
     source?: 'chapter' | 'notes'
   ) => Promise<string | undefined>;
   summaryAiDisabledReason?: string;
+  editDisabled?: boolean;
   primarySourceAvailable?: boolean;
   theme?: AppTheme;
   baselineSummary?: string;
@@ -74,6 +75,7 @@ export const StoryMetadata: React.FC<StoryMetadataProps> = ({
   onUpdate,
   onAiGenerateSummary,
   summaryAiDisabledReason,
+  editDisabled = false,
   primarySourceAvailable,
   theme = 'mixed',
   baselineSummary = '',
@@ -177,9 +179,12 @@ export const StoryMetadata: React.FC<StoryMetadataProps> = ({
         </div>
         <button
           onClick={() => useUIStore.getState().openMetadataDialog()}
+          disabled={editDisabled}
           className="text-brand-gray-500 hover:text-brand-gray-400 transition-colors"
           aria-label={t('Edit story metadata')}
-          title={t('Edit story metadata')}
+          title={t(
+            editDisabled ? 'workshop.linked.workshopOnly' : 'Edit story metadata'
+          )}
         >
           <Edit size={16} />
         </button>

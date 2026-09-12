@@ -20,7 +20,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import tempfile
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -33,6 +35,8 @@ from augmentedquill.services.scenes.scene_markers import validate_marker_integri
 
 ContentValidator = Callable[[str], None]
 _RECOVERY_ROOT = (".aq_history", "content-recovery")
+_external_lock_registry_guard = threading.Lock()
+_external_document_locks: dict[Path, threading.Lock] = {}
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,8 @@ class ContentSnapshot:
     revision: str
     filename: str
     document_key: str
+    source_path: str | None = None
+    document_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -95,34 +101,82 @@ def content_revision(content: str) -> str:
 
 
 def _resolve_document_path(project_dir: Path, path: Path) -> Path:
-    """Resolve a document once and require its target to stay in the project."""
+    """Resolve a document once, allowing only an explicit linked target."""
     root = project_dir.resolve()
     resolved = path.resolve()
-    if not resolved.is_relative_to(root):
-        raise ValueError("Document path must remain inside the project directory.")
-    return resolved
+    if resolved.is_relative_to(root):
+        return resolved
+
+    from augmentedquill.services.projects.manuscript_link import (
+        has_link_manifest,
+        linked_documents,
+    )
+
+    if has_link_manifest(project_dir) and any(
+        document.path == resolved
+        for document in linked_documents(project_dir, active_only=False)
+    ):
+        return resolved
+    raise ValueError(
+        "Document path must remain inside the project or be an allowlisted linked manuscript file."
+    )
+
+
+def _external_document_lock(path: Path) -> threading.Lock:
+    """Return the process-wide lock for one canonical external document.
+
+    Linked projects can point at the same author-owned file, so a lock keyed by
+    the metadata project directory is insufficient.  The lock is in memory on
+    purpose: the application never creates coordination files in the source
+    manuscript tree.  The existing per-project async lock remains the outer
+    lock for API calls; this lock only serializes the external target inside the
+    synchronous persistence boundary.
+    """
+    key = path.resolve()
+    with _external_lock_registry_guard:
+        lock = _external_document_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _external_document_locks[key] = lock
+        return lock
 
 
 def _document_key(project_dir: Path, path: Path) -> str:
     """Return a stable project-relative document key."""
-    return (
-        _resolve_document_path(project_dir, path)
-        .relative_to(project_dir.resolve())
-        .as_posix()
+    resolved = _resolve_document_path(project_dir, path)
+    root = project_dir.resolve()
+    if resolved.is_relative_to(root):
+        return resolved.relative_to(root).as_posix()
+    from augmentedquill.services.projects.manuscript_link import (
+        linked_transport_metadata,
     )
+
+    return linked_transport_metadata(project_dir, resolved)["document_key"]
 
 
 def _read_snapshot(project_dir: Path, path: Path) -> ContentSnapshot:
     """Read one document and calculate its byte-accurate revision."""
     resolved = _resolve_document_path(project_dir, path)
-    key = resolved.relative_to(project_dir.resolve()).as_posix()
+    key = _document_key(project_dir, resolved)
     raw = resolved.read_bytes() if resolved.exists() else b""
     content = raw.decode("utf-8")
+    snapshot_kwargs: dict[str, str] = {}
+    if key.startswith("linked:"):
+        from augmentedquill.services.projects.manuscript_link import (
+            linked_transport_metadata,
+        )
+
+        source_metadata = linked_transport_metadata(project_dir, resolved)
+        snapshot_kwargs = {
+            "source_path": source_metadata["source_path"],
+            "document_id": source_metadata["document_id"],
+        }
     return ContentSnapshot(
         content=content,
         revision=hashlib.sha256(raw).hexdigest(),
         filename=resolved.name,
         document_key=key,
+        **snapshot_kwargs,
     )
 
 
@@ -157,6 +211,16 @@ def _fsync_directory(path: Path) -> None:
 def _atomic_write(path: Path, content: str) -> None:
     """Atomically replace *path* with exact UTF-8 content and fsync it."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    # ``NamedTemporaryFile`` defaults to mode 0600.  Replacing an existing
+    # manuscript with that file would silently tighten its permissions, which
+    # is surprising for an editor save and can make a linked source unusable
+    # by its owner/group.  Capture the existing regular-file mode before
+    # replacement and apply it to the temporary inode.
+    existing_mode: int | None = None
+    try:
+        existing_mode = stat.S_IMODE(path.stat().st_mode)
+    except FileNotFoundError:
+        pass
     temporary_path: Path | None = None
     replaced = False
     try:
@@ -165,6 +229,8 @@ def _atomic_write(path: Path, content: str) -> None:
         ) as output:
             temporary_path = Path(output.name)
             output.write(content.encode("utf-8"))
+            if existing_mode is not None:
+                os.chmod(temporary_path, existing_mode)
             output.flush()
             os.fsync(output.fileno())
         os.replace(temporary_path, path)
@@ -188,6 +254,8 @@ def _prepare_recovery(
         revision=content_revision(after_content),
         filename=before.filename,
         document_key=before.document_key,
+        source_path=before.source_path,
+        document_id=before.document_id,
     )
     _durable_write(recovery_dir / "before", before.content.encode("utf-8"))
     _durable_write(recovery_dir / "after", after.content.encode("utf-8"))
@@ -201,6 +269,10 @@ def _prepare_recovery(
         "after_file": "after",
         "created_at": datetime.now(UTC).isoformat(),
     }
+    if before.source_path is not None:
+        manifest["source_path"] = before.source_path
+    if before.document_id is not None:
+        manifest["document_id"] = before.document_id
     _durable_write(
         recovery_dir / "manifest.json",
         (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
@@ -322,8 +394,28 @@ def _validated_recovery_record(
     ):
         raise ValueError("Recovery content does not match its manifest revisions.")
 
-    before = ContentSnapshot(before_content, before_revision, filename, document_key)
-    after = ContentSnapshot(after_content, after_revision, filename, document_key)
+    source_path = manifest.get("source_path")
+    document_id = manifest.get("document_id")
+    if source_path is not None and not isinstance(source_path, str):
+        raise ValueError("Recovery manifest has an invalid source path.")
+    if document_id is not None and not isinstance(document_id, str):
+        raise ValueError("Recovery manifest has an invalid document id.")
+    before = ContentSnapshot(
+        before_content,
+        before_revision,
+        filename,
+        document_key,
+        source_path,
+        document_id,
+    )
+    after = ContentSnapshot(
+        after_content,
+        after_revision,
+        filename,
+        document_key,
+        source_path,
+        document_id,
+    )
     committed_at = manifest.get("committed_at")
     if committed_at is not None and not isinstance(committed_at, str):
         raise ValueError("Recovery manifest has an invalid committed timestamp.")
@@ -385,9 +477,35 @@ def restore_content_recovery(
     record = _validated_recovery_record(project_dir, recovery_id)
     if target not in {"before", "after"}:
         raise ValueError("Recovery target must be 'before' or 'after'.")
-    path = (project_dir / record.after.document_key).resolve()
-    if not path.is_relative_to(project_dir.resolve()):
-        raise ValueError("Recovery document must remain inside the project.")
+    if record.after.document_id is not None or record.after.document_key.startswith(
+        "linked:"
+    ):
+        from augmentedquill.services.projects.manuscript_link import (
+            linked_transport_metadata,
+            resolve_linked_document,
+        )
+
+        document_id = record.after.document_id
+        if not document_id:
+            raise ValueError("Linked recovery record has no manifest document id.")
+        current_document = resolve_linked_document(project_dir, document_id)
+        current_metadata = linked_transport_metadata(project_dir, current_document.path)
+        # A recovery record names the exact source path and root fingerprint
+        # that was edited.  Resolving only by the mutable manifest id would let
+        # a later remap redirect an old undo operation to a different file,
+        # including a same-byte file with the same current revision.
+        if (
+            current_metadata["document_key"] != record.after.document_key
+            or current_metadata["source_path"] != record.after.source_path
+        ):
+            raise ValueError(
+                "Linked recovery record no longer identifies the original source file."
+            )
+        path = current_document.path
+    else:
+        path = (project_dir / record.after.document_key).resolve()
+        if not path.is_relative_to(project_dir.resolve()):
+            raise ValueError("Recovery document must remain inside the project.")
     target_snapshot = record.before if target == "before" else record.after
     return persist_content(
         project_dir,
@@ -442,6 +560,45 @@ def persist_content(
     torn bytes, while the next guarded read exposes the resulting revision.
     """
     path = _resolve_document_path(project_dir, path)
+    if not path.is_relative_to(project_dir.resolve()):
+        with _external_document_lock(path):
+            return _persist_content_resolved(
+                project_dir,
+                path,
+                content,
+                expected_revision=expected_revision,
+                expected_filename=expected_filename,
+                expected_document_key=expected_document_key,
+                validator=validator,
+            )
+    return _persist_content_resolved(
+        project_dir,
+        path,
+        content,
+        expected_revision=expected_revision,
+        expected_filename=expected_filename,
+        expected_document_key=expected_document_key,
+        validator=validator,
+    )
+
+
+def _persist_content_resolved(
+    project_dir: Path,
+    path: Path,
+    content: str,
+    *,
+    expected_revision: str | None = None,
+    expected_filename: str | None = None,
+    expected_document_key: str | None = None,
+    validator: ContentValidator | None = None,
+) -> ContentSnapshot:
+    """Persist one already-resolved path under any required external lock."""
+    if not path.is_relative_to(project_dir.resolve()) and (
+        expected_revision is None or expected_document_key is None
+    ):
+        raise ValueError(
+            "Linked manuscript saves require expected_revision and expected_document_key."
+        )
     before = _read_snapshot(project_dir, path)
     if (
         expected_document_key is not None

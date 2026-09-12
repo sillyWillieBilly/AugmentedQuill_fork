@@ -137,7 +137,9 @@ def select_project_response(name: str) -> ProjectSelectResponse:
         raise
 
     try:
-        story_payload = StoryPayload(**normalize_story_for_frontend(story))
+        story_payload = StoryPayload(
+            **normalize_story_for_frontend(story, active=active)
+        )
     except ValidationError as e:
         return ProjectSelectResponse(
             ok=True,
@@ -183,7 +185,7 @@ def create_project_response(
             "current": normalized_reg["current"],
             "recent": normalized_reg["recent"],
         },  # type: ignore[arg-type]
-        story=StoryPayload(**normalize_story_for_frontend(story)),
+        story=StoryPayload(**normalize_story_for_frontend(story, active=active)),
     )
 
 
@@ -192,7 +194,10 @@ def convert_project_response(new_type: str) -> ProjectMutationResponse:
     if not new_type:
         raise BadRequestError("new_type is required")
 
-    ok, msg = change_project_type(new_type)
+    try:
+        ok, msg = change_project_type(new_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not ok:
         raise HTTPException(status_code=400, detail=msg)
 
@@ -201,7 +206,7 @@ def convert_project_response(new_type: str) -> ProjectMutationResponse:
     return ProjectMutationResponse(
         ok=True,
         message=msg,
-        story=StoryPayload(**normalize_story_for_frontend(story)),
+        story=StoryPayload(**normalize_story_for_frontend(story, active=active)),
     )
 
 
@@ -218,7 +223,7 @@ def create_book_response(title: str) -> BookMutationResponse:
             ok=True,
             message="Book created",
             book_id=bid,
-            story=StoryPayload(**normalize_story_for_frontend(story)),
+            story=StoryPayload(**normalize_story_for_frontend(story, active=active)),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -296,7 +301,7 @@ def delete_book_response(book_id: str) -> BookMutationResponse:
         ok=True,
         message="Book deleted",
         restore_id=restore_id,
-        story=StoryPayload(**normalize_story_for_frontend(story)),
+        story=StoryPayload(**normalize_story_for_frontend(story, active=active)),
     )
 
 
@@ -350,5 +355,5 @@ def restore_book_response(restore_id: str) -> BookMutationResponse:
         ok=True,
         message="Book restored",
         book_id=book_id,
-        story=StoryPayload(**normalize_story_for_frontend(story)),
+        story=StoryPayload(**normalize_story_for_frontend(story, active=active)),
     )

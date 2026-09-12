@@ -40,6 +40,10 @@ export const AppChatPanel: React.FC<AppChatPanelProps> = React.memo(
     const { t } = useTranslation();
     const [panel, setPanel] = useState<'workshop' | 'lore' | 'chat'>('workshop');
     const projectId = useStoryStore((state: StoryStoreState): string => state.story.id);
+    const linkedMarkdown = useStoryStore(
+      (state: StoryStoreState): boolean =>
+        state.story.storage_mode === 'linked-markdown'
+    );
     const {
       isChatOpen,
       isChatAvailable,
@@ -173,14 +177,16 @@ export const AppChatPanel: React.FC<AppChatPanelProps> = React.memo(
           )}
           <div className={panel === 'chat' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
             <p className="border-b border-brand-gray-500/20 px-4 py-2 text-[10px] text-brand-gray-500">
-              {t('workshop.chatNotice')}
+              {t(
+                linkedMarkdown ? 'workshop.linked.workshopOnly' : 'workshop.chatNotice'
+              )}
             </p>
             <ChatProvider
               value={{
                 isChatOpen,
                 messages: chatMessages,
                 isLoading: isChatLoading,
-                isModelAvailable: isChatAvailable,
+                isModelAvailable: isChatAvailable && !linkedMarkdown,
                 activeChatConfig,
                 systemPrompt,
                 onSendMessage: handleSendMessage,

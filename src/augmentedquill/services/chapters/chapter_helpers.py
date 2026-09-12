@@ -38,6 +38,20 @@ def _scan_chapter_files(
     if not active:
         return []
 
+    # Linked Markdown projects use an explicit, project-local capability
+    # manifest.  Never glob the external source tree: the manifest is the
+    # only source of chapter membership and ordering.
+    from augmentedquill.services.projects.manuscript_link import (
+        has_link_manifest,
+        linked_documents,
+    )
+
+    if has_link_manifest(active):
+        return [
+            (document.order, document.path)
+            for document in linked_documents(active, active_only=True)
+        ]
+
     story = load_story_config(active / "story.json") or {}
     p_type = story.get("project_type", "novel")
 

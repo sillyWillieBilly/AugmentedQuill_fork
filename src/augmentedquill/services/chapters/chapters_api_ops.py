@@ -55,8 +55,18 @@ def build_chapter_entry(
         book_id = path.parent.parent.name
 
     document_key = path.name
+    source_fields: dict = {}
     if project_root is not None:
-        document_key = path.resolve().relative_to(project_root.resolve()).as_posix()
+        from augmentedquill.services.projects.manuscript_link import (
+            has_link_manifest,
+            linked_transport_metadata,
+        )
+
+        if has_link_manifest(project_root):
+            source_fields = linked_transport_metadata(project_root, path)
+            document_key = source_fields["document_key"]
+        else:
+            document_key = path.resolve().relative_to(project_root.resolve()).as_posix()
 
     return {
         "id": idx,
@@ -68,6 +78,11 @@ def build_chapter_entry(
         "conflicts": conflicts,
         "book_id": book_id,
         "document_key": document_key,
+        **{
+            key: source_fields[key]
+            for key in ("source_path", "manuscript_status")
+            if key in source_fields
+        },
     }
 
 
@@ -85,21 +100,14 @@ def chapter_detail_payload(active: Path | None, chap_id: int, path: Path) -> dic
     files = _scan_chapter_files(active)
     story = load_story_config((active / "story.json") if active else None) or {}
     base = build_chapter_entry(chap_id, path, story, files, active)
-    return {
-        "id": chap_id,
-        "title": base["title"],
-        "filename": base["filename"],
-        "summary": base["summary"],
-        "notes": base["notes"],
-        "private_notes": base["private_notes"],
-        "conflicts": base["conflicts"],
-        "book_id": base["book_id"],
-        "document_key": base["document_key"],
-    }
+    return base
 
 
 def reorder_chapters_in_project(active: Path, payload: dict) -> None:
     """Reorder Chapters In Project."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(active, "reorder-chapters")
     story_path = active / "story.json"
     story = load_story_config(story_path) or {}
     project_type = story.get("project_type", "novel")
@@ -378,6 +386,9 @@ def reorder_chapters_in_project(active: Path, payload: dict) -> None:
 
 def reorder_books_in_project(active: Path, payload: dict) -> None:
     """Reorder Books In Project."""
+    from augmentedquill.services.projects.manuscript_link import reject_linked_mutation
+
+    reject_linked_mutation(active, "reorder-books")
     book_ids = payload.get("book_ids", [])
     if not isinstance(book_ids, list):
         raise ValueError("book_ids must be a list")

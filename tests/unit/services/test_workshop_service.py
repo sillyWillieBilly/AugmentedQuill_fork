@@ -336,6 +336,33 @@ def test_budget_rejects_output_reserve_larger_than_model_context(tmp_path: Path)
         )
 
 
+@pytest.mark.parametrize("explicit", [None, 512])
+def test_configured_reply_limit_is_used_unless_explicitly_overridden(
+    tmp_path, explicit
+):
+    project = _project(tmp_path)
+    request = _request(budget={} if explicit is None else {"outputTokens": explicit})
+    response, complete = _run(
+        project,
+        request,
+        {"content": '{"discussion":"ok","alternatives":[]}'},
+        machine={
+            "openai": {
+                "models": [
+                    {
+                        "name": "fixture",
+                        "context_length": 32768,
+                        "max_tokens": 4096,
+                    }
+                ]
+            }
+        },
+    )
+    expected = explicit or 4096
+    assert complete.call_args.kwargs["max_tokens"] == expected
+    assert response.context.budget.output_tokens == expected
+
+
 def test_model_tool_call_and_provider_failure_are_safe(tmp_path: Path):
     project = _project(tmp_path)
     request = _request()

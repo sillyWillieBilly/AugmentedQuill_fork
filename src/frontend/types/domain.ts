@@ -23,6 +23,8 @@ export interface Chapter {
   filename?: string;
   book_id?: string;
   document_key?: string;
+  source_path?: string;
+  manuscript_status?: string;
   notes?: string;
   private_notes?: string;
   conflicts?: Conflict[];
@@ -37,6 +39,8 @@ export interface WritingUnit {
   filename?: string;
   book_id?: string;
   document_key?: string;
+  source_path?: string;
+  manuscript_status?: string;
   notes?: string;
   private_notes?: string;
   conflicts?: Conflict[];
@@ -90,6 +94,8 @@ export interface Story {
   chapters: Chapter[];
   draft: WritingUnit | null;
   projectType: 'short-story' | 'novel' | 'series';
+  storage_mode?: string;
+  source_root?: string;
   language?: string;
   books?: Book[];
   sourcebook?: SourcebookEntry[];

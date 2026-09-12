@@ -16,6 +16,8 @@ import { ProjectListItem } from '../../services/apiTypes';
 import { mapSelectStoryToState } from '../story/storyMappers';
 import { formatError, notifyError } from '../../services/errorNotifier';
 import { useChatStore } from '../../stores/chatStore';
+import { useStoryStore } from '../../stores/storyStore';
+import { useUIStore } from '../../stores/uiStore';
 
 type CreateProjectType = 'short-story' | 'novel' | 'series';
 
@@ -299,29 +301,34 @@ export function useProjectManagement({
         }
 
         let carriedChatId: string | null = null;
+        let carriedChatPayload:
+          | NonNullable<ReturnType<typeof getActivePersistentChatSnapshot>>['payload']
+          | null = null;
 
         if (shouldPreserveActiveChat) {
           const snapshot = getActivePersistentChatSnapshot();
           if (snapshot) {
             carriedChatId = snapshot.chatId;
+            carriedChatPayload = snapshot.payload;
 
-            // Flush current project chat state so the source project keeps the
-            // partial history up to this switch point.
-            try {
-              await api
-                .forProject(storyId)
-                .chat.save(snapshot.chatId, snapshot.payload);
-            } catch (error) {
-              console.warn('Failed to flush source chat before project switch', error);
-            }
-
-            try {
-              await api
-                .forProject(targetProjectId)
-                .chat.save(snapshot.chatId, snapshot.payload);
-            } catch (error) {
-              console.warn('Failed to duplicate chat into target project', error);
-              carriedChatId = null;
+            // Flush current project chat state only while the store still
+            // identifies the source as a native project.  Linked Markdown has
+            // no legacy chat persistence endpoint.
+            const sourceStory = useStoryStore.getState().story;
+            if (
+              sourceStory.id === storyId &&
+              sourceStory.storage_mode !== 'linked-markdown'
+            ) {
+              try {
+                await api
+                  .forProject(storyId)
+                  .chat.save(snapshot.chatId, snapshot.payload);
+              } catch (error) {
+                console.warn(
+                  'Failed to flush source chat before project switch',
+                  error
+                );
+              }
             }
           }
         }
@@ -330,7 +337,43 @@ export function useProjectManagement({
         if (!response.ok) return;
 
         await refreshStory(undefined, true);
-        const chats = await api.chat.list();
+        const selectedStory = useStoryStore.getState().story;
+        const targetStorageMode =
+          response.story?.storage_mode ??
+          (selectedStory.id === targetProjectId
+            ? selectedStory.storage_mode
+            : undefined);
+        const targetIsLinkedMarkdown = targetStorageMode === 'linked-markdown';
+
+        if (carriedChatId && carriedChatPayload && !targetIsLinkedMarkdown) {
+          try {
+            await api
+              .forProject(targetProjectId)
+              .chat.save(carriedChatId, carriedChatPayload);
+          } catch (error) {
+            console.warn('Failed to duplicate chat into target project', error);
+            carriedChatId = null;
+          }
+        }
+
+        if (targetIsLinkedMarkdown) {
+          useUIStore.getState().setWorkspaceMode('page');
+          // App-only metadata from the previous project must not remain
+          // visible while the linked project's prose is loading.
+          const chatStore = useChatStore.getState();
+          chatStore.setChatMessages([]);
+          chatStore.setChatHistoryList([]);
+          chatStore.setCurrentChatId(null);
+          chatStore.setIsIncognito(false);
+          chatStore.setIncognitoSessions([]);
+          chatStore.setAllowWebSearch(false);
+          chatStore.setScratchpad('');
+          chatStore.setProjectContextRevision(null);
+          chatStore.setSessionMutations([]);
+          return;
+        }
+
+        const chats = await api.forProject(targetProjectId).chat.list();
         useChatStore.getState().setChatHistoryList(chats);
         if (
           carriedChatId &&

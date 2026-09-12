@@ -134,7 +134,8 @@ export function useChapterSuggestions({
   // request the backend to recompute which sourcebook entries appear
   // relevant given the provided text; results replace the current checks.
   const fetchRelevance = async (text: string): Promise<void> => {
-    if (!currentUnit || !autoSelectionEnabledRef.current) return;
+    if (!currentUnit || currentUnit.source_path || !autoSelectionEnabledRef.current)
+      return;
     relevanceInFlightRef.current += 1;
     setIsSourcebookSelectionRunning(true);
     try {
@@ -167,12 +168,17 @@ export function useChapterSuggestions({
   // when chapter content changes, recompute sourcebook relevance after a
   // pause; this prevents a flood of model calls while the user types.
   useEffect((): (() => void) | undefined => {
-    if (!currentUnit || !isAutoSourcebookSelectionEnabled) return;
+    if (!currentUnit || currentUnit.source_path || !isAutoSourcebookSelectionEnabled)
+      return;
     const timer = setTimeout((): void => {
       fetchRelevance(currentUnit.content);
     }, 2000);
     return (): void => clearTimeout(timer);
-  }, [currentUnit?.content, isAutoSourcebookSelectionEnabled]);
+  }, [
+    currentUnit?.content,
+    currentUnit?.source_path,
+    isAutoSourcebookSelectionEnabled,
+  ]);
 
   const cancelSignalRef = useRef<{
     cancelled: boolean;
@@ -236,7 +242,7 @@ export function useChapterSuggestions({
     contentOverride?: string,
     enableSuggestionMode: boolean = true
   ): Promise<void> => {
-    if (!currentUnit) return;
+    if (!currentUnit || currentUnit.source_path) return;
     if (!isWritingAvailable) return;
     if (isSuggesting) return;
 
@@ -306,7 +312,7 @@ export function useChapterSuggestions({
     text: string,
     contentOverride?: string
   ): Promise<void> => {
-    if (!currentUnit) return;
+    if (!currentUnit || currentUnit.source_path) return;
 
     if (!text) {
       // Dismiss: keep current content unchanged, clear suggestion state
@@ -354,7 +360,7 @@ export function useChapterSuggestions({
     cursor?: number,
     contentOverride?: string
   ): Promise<void> => {
-    if (!currentUnit) return;
+    if (!currentUnit || currentUnit.source_path) return;
     if (isSuggesting && action !== 'exit') return;
 
     if (action === 'exit') {

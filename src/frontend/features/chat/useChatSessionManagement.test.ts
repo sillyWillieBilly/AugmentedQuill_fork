@@ -16,6 +16,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { useChatSessionManagement } from './useChatSessionManagement';
 import { useChatStore } from '../../stores/chatStore';
+import { StoryStoreState, useStoryStore } from '../../stores/storyStore';
 import { api } from '../../services/api';
 import type { ChatSession } from '../../types/chat';
 
@@ -40,6 +41,9 @@ describe('useChatSessionManagement', () => {
     vi.clearAllMocks();
     vi.mocked(api.chat.list).mockResolvedValue([]);
     vi.mocked(api.chat.load).mockResolvedValue(null);
+    useStoryStore.setState((state: StoryStoreState) => ({
+      story: { ...state.story, id: '', storage_mode: undefined },
+    }));
     // Reset chatStore to a clean state between tests
     useChatStore.setState({
       chatMessages: [],
@@ -238,5 +242,39 @@ describe('useChatSessionManagement', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('skips persistent chat loading and clears old sessions for linked Markdown', async () => {
+    useStoryStore.setState((state: StoryStoreState) => ({
+      story: {
+        ...state.story,
+        id: 'linked-project',
+        storage_mode: 'linked-markdown',
+      },
+    }));
+    useChatStore.setState({
+      chatMessages: [{ id: 'old-message', role: 'user', text: 'old project' }],
+      chatHistoryList: [{ id: 'old-chat', name: 'Old project', messages: [] }],
+      currentChatId: 'old-chat',
+      isIncognito: false,
+      incognitoSessions: [],
+      scratchpad: 'old scratchpad',
+      projectContextRevision: 3,
+    });
+
+    renderHook(() =>
+      useChatSessionManagement({
+        storyId: 'linked-project',
+        getSystemPrompt: () => 'System Prompt',
+      })
+    );
+
+    await waitFor(() => {
+      expect(useChatStore.getState().currentChatId).toBeNull();
+    });
+    expect(useChatStore.getState().chatMessages).toEqual([]);
+    expect(useChatStore.getState().chatHistoryList).toEqual([]);
+    expect(useChatStore.getState().scratchpad).toBe('');
+    expect(api.chat.list).not.toHaveBeenCalled();
   });
 });

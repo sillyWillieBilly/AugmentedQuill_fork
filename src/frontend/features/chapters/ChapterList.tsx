@@ -98,6 +98,7 @@ interface ChapterListProps {
   chapters: Chapter[];
   books?: Book[];
   projectType?: 'short-story' | 'novel' | 'series';
+  linkedMarkdown?: boolean;
   currentChapterId: string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
@@ -135,6 +136,7 @@ function ChapterListInner({
   chapters,
   books = [],
   projectType = 'novel',
+  linkedMarkdown = false,
   currentChapterId,
   onSelect,
   onDelete,
@@ -691,7 +693,7 @@ function ChapterListInner({
         <button
           type="button"
           className="flex flex-col w-full text-left cursor-pointer"
-          draggable
+          draggable={!linkedMarkdown}
           onDragStart={(e: React.DragEvent<HTMLButtonElement>): void =>
             handleDragStart(e, 'chapter', chapter.id, index, chapter.book_id)
           }
@@ -717,6 +719,7 @@ function ChapterListInner({
             );
           }}
           onDrop={(e: React.DragEvent<HTMLButtonElement>): void => {
+            if (linkedMarkdown) return;
             if (handleChapterSceneDrop(e, chapter.id)) return;
             handleDrop(e);
           }}
@@ -755,6 +758,7 @@ function ChapterListInner({
             <Edit size={14} />
           </button>
           <button
+            disabled={linkedMarkdown}
             onClick={async (
               e: React.MouseEvent<HTMLButtonElement, MouseEvent>
             ): Promise<void> => {
@@ -763,7 +767,7 @@ function ChapterListInner({
                 onDelete(chapter.id);
               }
             }}
-            className="p-1 text-brand-gray-400 hover:text-red-500"
+            className="p-1 text-brand-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
             title={t('Delete Chapter')}
           >
             <Trash2 size={14} />
@@ -898,7 +902,7 @@ function ChapterListInner({
           >
             {projectType === 'series' ? t('Books & Chapters') : t('Chapters')}
           </h2>
-          {projectType === 'novel' && !scenesMode && (
+          {projectType === 'novel' && !scenesMode && !linkedMarkdown && (
             <button
               onClick={(): void => onCreate()}
               className={`p-1 rounded-full transition-colors ${btnHover}`}
@@ -910,6 +914,7 @@ function ChapterListInner({
         </div>
         <button
           onClick={(): void => setScenesMode((prev: boolean) => !prev)}
+          disabled={linkedMarkdown}
           className={`p-1 rounded transition-colors ${btnHover}`}
           title={scenesMode ? t('Show chapters view') : t('Show scenes view')}
         >
@@ -917,7 +922,12 @@ function ChapterListInner({
         </button>
       </div>
 
-      {scenesMode ? (
+      {linkedMarkdown && (
+        <p className="border-b border-brand-gray-500/20 px-4 py-2 text-xs text-brand-gray-500">
+          {t('workshop.linked.structure')}
+        </p>
+      )}
+      {scenesMode && !linkedMarkdown ? (
         <SceneTreeView
           scenes={scenes}
           chapters={displayChapters}

@@ -4211,6 +4211,100 @@
         }
       }
     },
+    "/api/v1/projects/{project_name}/manuscript/link": {
+      "get": {
+        "tags": ["Manuscript"],
+        "summary": "Api Get Manuscript Link",
+        "description": "Return the explicit external manuscript allowlist.",
+        "operationId": "api_get_manuscript_link_api_v1_projects__project_name__manuscript_link_get",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManuscriptLinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Manuscript"],
+        "summary": "Api Create Manuscript Link",
+        "description": "Link selected Markdown/text files without copying or modifying them.",
+        "operationId": "api_create_manuscript_link_api_v1_projects__project_name__manuscript_link_post",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManuscriptLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManuscriptLinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{project_name}/search": {
       "post": {
         "tags": ["Search"],
@@ -6063,6 +6157,28 @@
           "document_key": {
             "type": "string",
             "title": "Document Key"
+          },
+          "source_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Path"
+          },
+          "manuscript_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manuscript Status"
           }
         },
         "type": "object",
@@ -6196,6 +6312,28 @@
               }
             ],
             "title": "Document Key"
+          },
+          "source_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Path"
+          },
+          "manuscript_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manuscript Status"
           }
         },
         "type": "object",
@@ -8301,6 +8439,70 @@
         "required": ["ok"],
         "title": "MachineTestResponse",
         "description": "Response body for ``POST /api/v1/machine/test``."
+      },
+      "ManuscriptLinkRequest": {
+        "properties": {
+          "source_root": {
+            "type": "string",
+            "title": "Source Root"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Files"
+          },
+          "excluded": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Excluded"
+          }
+        },
+        "type": "object",
+        "required": ["source_root", "files"],
+        "title": "ManuscriptLinkRequest",
+        "description": "Request an explicit source-file allowlist for an existing project."
+      },
+      "ManuscriptLinkResponse": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "source_root": {
+            "type": "string",
+            "title": "Source Root"
+          },
+          "entries": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "excluded": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Excluded"
+          }
+        },
+        "type": "object",
+        "required": ["schema_version", "kind", "source_root", "entries", "excluded"],
+        "title": "ManuscriptLinkResponse",
+        "description": "A lossless link manifest projection returned by the API."
       },
       "ModelCapabilities": {
         "properties": {
@@ -11053,6 +11255,28 @@
               }
             ],
             "title": "Conflicts"
+          },
+          "source_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Path"
+          },
+          "manuscript_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manuscript Status"
           }
         },
         "type": "object",
@@ -11323,6 +11547,28 @@
               }
             ],
             "title": "Scenes"
+          },
+          "storage_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Mode"
+          },
+          "source_root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Root"
           }
         },
         "type": "object",

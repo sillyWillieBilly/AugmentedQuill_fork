@@ -226,6 +226,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
               }
             >
               <StoryMetadata
+                editDisabled={storyMeta.storage_mode === 'linked-markdown'}
                 title={storyMeta.title}
                 summary={storyMeta.summary}
                 tags={storyMeta.styleTags}
@@ -256,11 +257,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
                   )
                 }
                 summaryAiDisabledReason={
-                  !isEditingAvailable
-                    ? t(
-                        'Summary AI is unavailable because no working EDITING model is configured.'
-                      )
-                    : undefined
+                  storyMeta.storage_mode === 'linked-markdown'
+                    ? t('workshop.linked.workshopOnly')
+                    : !isEditingAvailable
+                      ? t(
+                          'Summary AI is unavailable because no working EDITING model is configured.'
+                        )
+                      : undefined
                 }
                 primarySourceAvailable={
                   storyMeta.projectType === 'short-story'
@@ -311,6 +314,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
                   chapters={chaptersMeta}
                   books={books}
                   projectType={storyMeta.projectType}
+                  linkedMarkdown={storyMeta.storage_mode === 'linked-markdown'}
                   currentChapterId={currentChapterId}
                   onSelect={handleChapterSelect}
                   onDelete={deleteChapter}
@@ -322,7 +326,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
                   onReorderChapters={handleReorderChapters}
                   onReorderBooks={handleReorderBooks}
                   onAiAction={handleSidebarAiAction}
-                  isAiAvailable={isEditingAvailable}
+                  isAiAvailable={
+                    isEditingAvailable && storyMeta.storage_mode !== 'linked-markdown'
+                  }
                   theme={currentTheme}
                   onOpenImages={handleOpenImages}
                   languages={instructionLanguages}
@@ -353,25 +359,33 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
                   : undefined
               }
             >
-              <SourcebookList
-                theme={currentTheme}
-                language={storyMeta.language}
-                externalEntries={sourcebook}
-                checkedIds={checkedSourcebookIds || []}
-                onToggle={handleSourcebookToggle}
-                isAutoSelectionEnabled={
-                  sidebarControls.isAutoSourcebookSelectionEnabled
-                }
-                onToggleAutoSelection={sidebarControls.onToggleAutoSourcebookSelection}
-                isAutoSelectionRunning={sidebarControls.isSourcebookSelectionRunning}
-                mutatedEntryIds={sidebarControls.mutatedSourcebookEntryIds}
-                onMutated={onSourcebookMutated}
-                onAppUndo={onAppUndo}
-                onAppRedo={onAppRedo}
-                canAppUndo={canAppUndo}
-                canAppRedo={canAppRedo}
-                baselineEntries={baseline?.sourcebook}
-              />
+              {storyMeta.storage_mode === 'linked-markdown' ? (
+                <p className="px-4 py-3 text-sm text-brand-gray-500">
+                  {t('workshop.linked.lore')}
+                </p>
+              ) : (
+                <SourcebookList
+                  theme={currentTheme}
+                  language={storyMeta.language}
+                  externalEntries={sourcebook}
+                  checkedIds={checkedSourcebookIds || []}
+                  onToggle={handleSourcebookToggle}
+                  isAutoSelectionEnabled={
+                    sidebarControls.isAutoSourcebookSelectionEnabled
+                  }
+                  onToggleAutoSelection={
+                    sidebarControls.onToggleAutoSourcebookSelection
+                  }
+                  isAutoSelectionRunning={sidebarControls.isSourcebookSelectionRunning}
+                  mutatedEntryIds={sidebarControls.mutatedSourcebookEntryIds}
+                  onMutated={onSourcebookMutated}
+                  onAppUndo={onAppUndo}
+                  onAppRedo={onAppRedo}
+                  canAppUndo={canAppUndo}
+                  canAppRedo={canAppRedo}
+                  baselineEntries={baseline?.sourcebook}
+                />
+              )}
             </CollapsibleSection>
           )}
         </div>

@@ -27,8 +27,8 @@ conversation history per project in this browser. It reports browser storage
 failure explicitly. Opening the app on a different port or in a different browser
 uses a different browser history; project files remain on disk.
 
-**Project chat** retains upstream's broader tool workflow. Its notice explains
-that it can edit chapters and lore. AI-created or AI-edited Sourcebook assertion
+**Project chat** retains upstream's broader tool workflow for native projects.
+Its notice explains that it can edit chapters and lore. AI-created or AI-edited Sourcebook assertion
 records are marked as proposals; promote them explicitly in Lore when accepted.
 
 ## Lore and context
@@ -53,6 +53,10 @@ tokenizer measurements. The configured model context is shown separately from
 the bounded Workshop input allocation. Full system instructions, exact target and
 complete selected lore records must fit; the app can trim optional context or
 history and reports this. It rejects an impossible mandatory context budget.
+Workshop uses the selected model's configured reply limit, capped at 4,096
+tokens, unless an API caller explicitly supplies a smaller or larger allowed
+reserve. The fallback for models without a reply setting is 1,024 tokens. Both
+the context inspector and the model request use the same output reserve.
 
 Import World Info JSON in the Lore tab. Unsupported settings are shown before
 confirmation and on the imported book. Export preserves JSON values, original
@@ -87,7 +91,52 @@ replace story metadata atomically under the project lock. Existing generic
 Sourcebook normalization still applies to native metadata; raw World Info uses
 separate sidecars for its lossless semantic round trip.
 
-## Manuscript copies and storage
+## Editing original Markdown files
+
+Linked Markdown projects edit the explicitly selected original files in place.
+The **Editing original Markdown** bar shows the full destination above the page;
+typing and **Apply wording** use the same revision-checked save queue. The file
+names, directories and Markdown bytes are preserved when the project is linked.
+Application metadata and recovery snapshots live in the app's separate project
+directory under `.local-data/projects/`.
+
+To create a linked workspace, run the following from this checkout with your own
+paths, repeating `--file` in the order you want the files to appear:
+
+```sh
+venv/bin/python tools/link_manuscript.py \
+  --source '/absolute/path/to/book' \
+  --destination '.local-data/projects/My Linked Book' \
+  --title 'My Linked Book' \
+  --file 'manuscript/chapter-01.md' \
+  --file 'manuscript/chapter-02.md'
+```
+
+Open **Settings**, refresh the projects list, and open the new workspace. The
+link command reads only explicitly named files and creates an app-local manifest.
+It refuses an existing link or a destination containing chapter files. Missing
+sources and symlinked paths fail visibly; they are never recreated as empty
+chapters. An optional repeated `--exclude` records reference provenance without
+making those files editable.
+
+For a linked book, use **Workshop** to discuss and revise passages. The native
+project restructuring commands and broader Project chat writing tools are
+disabled. New drafts and alternatives can appear as separately labelled files;
+their presence in the sidebar does not promote their events to accepted canon.
+Manage file order and additions through the explicit link manifest when changing
+the book's organization.
+
+The current lore entries are project metadata with source references. Editing
+them does not rewrite the original planning documents. Check each entry's
+editorial status and source when a manuscript decision changes.
+
+An accepted wording change goes straight to the displayed original file.
+Existing BOMs, line endings and regular-file permission bits are preserved. A
+stale disk revision or a different source identity pauses saving and keeps the
+local wording available for review. Recovery records are stored in the app
+project, bound to that same original file identity.
+
+## Imported working copies
 
 Use [the copy importer](MANUSCRIPT_IMPORT.md) with an explicit ordered list of
 Markdown files. It verifies source hashes before and after copying into a fresh

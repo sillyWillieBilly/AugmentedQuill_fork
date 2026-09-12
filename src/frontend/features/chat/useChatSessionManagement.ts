@@ -15,20 +15,26 @@
  * selector subscription in App-level code.
  */
 
-import { useCallback, useEffect, startTransition } from 'react';
+import { useCallback, useEffect, useRef, startTransition } from 'react';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatSession, ChatMessage } from '../../types';
 import { api } from '../../services/api';
 import { useChatStore, ChatStoreState } from '../../stores/chatStore';
-import { useStoryStore } from '../../stores/storyStore';
+import { StoryStoreState, useStoryStore } from '../../stores/storyStore';
 import type { ConfirmFn } from '../layout/ConfirmDialogContext';
 
 type UseChatSessionManagementParams = {
   storyId: string;
   getSystemPrompt: () => string;
   confirm: ConfirmFn;
+};
+
+const canUsePersistentChat = (projectId: string): boolean => {
+  if (!projectId) return true;
+  const story = useStoryStore.getState().story;
+  return story.id === projectId && story.storage_mode !== 'linked-markdown';
 };
 
 /** Custom React hook that manages chat session management. */
@@ -62,6 +68,16 @@ export function useChatSessionManagement({
     // Setters are stable — read via getState() to avoid subscribing to every token.
   } = useChatStore.getState();
 
+  const activeProjectId = useStoryStore(
+    (state: StoryStoreState): string => state.story.id
+  );
+  const storageMode = useStoryStore(
+    (state: StoryStoreState): string | undefined => state.story.storage_mode
+  );
+  const isLinkedMarkdown =
+    activeProjectId === storyId && storageMode === 'linked-markdown';
+  const previousProjectIdRef = useRef<string | undefined>(undefined);
+
   const { t } = useTranslation();
 
   // Update systemPrompt when the project changes.
@@ -70,13 +86,19 @@ export function useChatSessionManagement({
   }, [storyId, getSystemPrompt, setSystemPrompt]);
 
   const refreshChatList = useCallback(async (): Promise<void> => {
+    if (!storyId || !canUsePersistentChat(storyId)) {
+      setChatHistoryList([]);
+      return;
+    }
     try {
-      const chats = await api.chat.list();
+      const requestedProjectId = storyId;
+      const chats = await api.forProject(requestedProjectId).chat.list();
+      if (!canUsePersistentChat(requestedProjectId)) return;
       setChatHistoryList(chats);
     } catch (error) {
       console.error('Failed to list chats', error);
     }
-  }, []);
+  }, [storyId, setChatHistoryList]);
 
   const handleNewChat = useCallback(
     (incognito: boolean = false): void => {
@@ -146,8 +168,14 @@ export function useChatSessionManagement({
         return;
       }
 
+      if (storyId && !canUsePersistentChat(storyId)) return;
+
       try {
-        const chat = await api.chat.load(id);
+        const requestedProjectId = storyId;
+        const chat = await (requestedProjectId
+          ? api.forProject(requestedProjectId).chat.load(id)
+          : api.chat.load(id));
+        if (requestedProjectId && !canUsePersistentChat(requestedProjectId)) return;
         if (chat) {
           startTransition((): void => {
             setChatMessages(chat.messages || []);
@@ -174,6 +202,7 @@ export function useChatSessionManagement({
       setProjectContextRevision,
       setSystemPrompt,
       setAllowWebSearch,
+      storyId,
     ]
   );
 
@@ -211,6 +240,13 @@ export function useChatSessionManagement({
         return;
       }
 
+      if (storyId && !canUsePersistentChat(storyId)) {
+        if (currentChatId === id) {
+          handleNewChat();
+        }
+        return;
+      }
+
       // Incognito sessions are in-memory only, so removing them needs no
       // confirmation; saved sessions are deleted permanently after a prompt.
       if (!(await confirm(t('Delete this chat?')))) {
@@ -218,7 +254,7 @@ export function useChatSessionManagement({
       }
 
       try {
-        await api.chat.delete(id);
+        await (storyId ? api.forProject(storyId).chat.delete(id) : api.chat.delete(id));
         await refreshChatList();
         if (currentChatId === id) {
           handleNewChat();
@@ -227,7 +263,7 @@ export function useChatSessionManagement({
         console.error('Failed to delete chat', error);
       }
     },
-    [handleNewChat, refreshChatList, setIncognitoSessions, confirm, t]
+    [handleNewChat, refreshChatList, setIncognitoSessions, confirm, t, storyId]
   );
 
   const handleDeleteAllChats = useCallback(async (): Promise<void> => {
@@ -243,36 +279,106 @@ export function useChatSessionManagement({
 
     try {
       setIncognitoSessions([]);
-      await api.chat.deleteAll();
+      if (storyId && !canUsePersistentChat(storyId)) {
+        setChatMessages([]);
+        setChatHistoryList([]);
+        setCurrentChatId(null);
+        setIsIncognito(false);
+        setAllowWebSearch(false);
+        setScratchpad('');
+        setProjectContextRevision(null);
+        setSessionMutations([]);
+        return;
+      }
+      await (storyId ? api.forProject(storyId).chat.deleteAll() : api.chat.deleteAll());
       await refreshChatList();
       handleNewChat();
     } catch (error) {
       console.error('Failed to delete all chats', error);
     }
-  }, [refreshChatList, handleNewChat, setIncognitoSessions, confirm, t]);
+  }, [
+    refreshChatList,
+    handleNewChat,
+    setIncognitoSessions,
+    setChatMessages,
+    setChatHistoryList,
+    setCurrentChatId,
+    setIsIncognito,
+    setAllowWebSearch,
+    setScratchpad,
+    setProjectContextRevision,
+    setSessionMutations,
+    confirm,
+    t,
+    storyId,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Initial chat load
   // ---------------------------------------------------------------------------
   useEffect((): void => {
-    const { currentChatId, isIncognito } = useChatStore.getState();
-    if (storyId && !currentChatId && !isIncognito) {
-      const loadInitialChats = async (): Promise<void> => {
-        try {
-          const chats = await api.chat.list();
-          startTransition(() => setChatHistoryList(chats));
-          if (chats.length > 0) {
-            await handleSelectChat(chats[0].id);
-          } else {
-            handleNewChat(false);
-          }
-        } catch (error) {
-          console.error('Failed to load initial chats', error);
-        }
-      };
-      loadInitialChats();
+    const previousProjectId = previousProjectIdRef.current;
+    const projectChanged =
+      previousProjectId !== undefined
+        ? previousProjectId !== storyId
+        : Boolean(storyId);
+    previousProjectIdRef.current = storyId;
+
+    if (projectChanged || isLinkedMarkdown) {
+      // Chat sessions are app-only metadata.  Drop the old project's data as
+      // soon as its identity changes; this does not touch story content.
+      setChatMessages([]);
+      setChatHistoryList([]);
+      setCurrentChatId(null);
+      setIsIncognito(false);
+      setIncognitoSessions([]);
+      setAllowWebSearch(false);
+      setScratchpad('');
+      setProjectContextRevision(null);
+      setSessionMutations([]);
     }
-  }, [storyId, handleSelectChat, handleNewChat, setChatHistoryList]);
+
+    const { currentChatId, isIncognito } = useChatStore.getState();
+    if (
+      !storyId ||
+      isLinkedMarkdown ||
+      !canUsePersistentChat(storyId) ||
+      (projectChanged ? false : Boolean(currentChatId || isIncognito))
+    ) {
+      return;
+    }
+
+    const requestedProjectId = storyId;
+    const loadInitialChats = async (): Promise<void> => {
+      try {
+        const chats = await api.forProject(requestedProjectId).chat.list();
+        if (!canUsePersistentChat(requestedProjectId)) return;
+        startTransition(() => setChatHistoryList(chats));
+        if (chats.length > 0) {
+          await handleSelectChat(chats[0].id);
+        } else {
+          handleNewChat(false);
+        }
+      } catch (error) {
+        console.error('Failed to load initial chats', error);
+      }
+    };
+    loadInitialChats();
+  }, [
+    storyId,
+    isLinkedMarkdown,
+    handleSelectChat,
+    handleNewChat,
+    setChatMessages,
+    setChatHistoryList,
+    setCurrentChatId,
+    setIsIncognito,
+    setIncognitoSessions,
+    setAllowWebSearch,
+    setScratchpad,
+    setProjectContextRevision,
+    setSessionMutations,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Auto-save: react to chatMessages / isChatLoading changes without
@@ -315,6 +421,10 @@ export function useChatSessionManagement({
           return;
         }
 
+        if (storyId && !canUsePersistentChat(storyId)) {
+          return;
+        }
+
         if (isIncognito) {
           const firstUserMsg = chatMessages.find(
             (message: ChatMessage): boolean => message.role === 'user'
@@ -353,14 +463,23 @@ export function useChatSessionManagement({
                 (m: ChatMessage): boolean => m.role === 'user'
               );
               const name = firstUserMsg?.text?.substring(0, 40) || 'Untitled Chat';
-              await api.chat.save(cid, {
-                name,
-                messages: msgs,
-                systemPrompt: sp,
-                allowWebSearch: aws,
-                scratchpad: sc,
-                projectContextRevision: pcr,
-              });
+              await (storyId
+                ? api.forProject(storyId).chat.save(cid, {
+                    name,
+                    messages: msgs,
+                    systemPrompt: sp,
+                    allowWebSearch: aws,
+                    scratchpad: sc,
+                    projectContextRevision: pcr,
+                  })
+                : api.chat.save(cid, {
+                    name,
+                    messages: msgs,
+                    systemPrompt: sp,
+                    allowWebSearch: aws,
+                    scratchpad: sc,
+                    projectContextRevision: pcr,
+                  }));
               refreshChatList();
             } catch (error) {
               console.error('Failed to auto-save chat', error);
@@ -374,7 +493,7 @@ export function useChatSessionManagement({
       clearTimeout(timeout);
       unsubscribe();
     };
-  }, [refreshChatList]);
+  }, [refreshChatList, storyId]);
 
   return {
     refreshChatList,

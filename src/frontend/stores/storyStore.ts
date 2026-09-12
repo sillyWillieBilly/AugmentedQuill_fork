@@ -351,6 +351,8 @@ export type StoryMetadataSnapshot = Pick<
   | 'private_notes'
   | 'styleTags'
   | 'projectType'
+  | 'storage_mode'
+  | 'source_root'
   | 'language'
   | 'conflicts'
 > & {
@@ -391,6 +393,8 @@ export function useStoryMeta(): StoryMetadataSnapshot {
       styleTags: s.story.styleTags,
       draftIsEmpty: !s.story.draft?.content?.trim(),
       projectType: s.story.projectType,
+      storage_mode: s.story.storage_mode,
+      source_root: s.story.source_root,
       language: s.story.language,
       conflicts: s.story.conflicts,
     }))
@@ -418,6 +422,8 @@ function chaptersStructuralEqual(
       ch.id === b[i].id &&
       ch.title === b[i].title &&
       ch.book_id === b[i].book_id &&
+      ch.source_path === b[i].source_path &&
+      ch.manuscript_status === b[i].manuscript_status &&
       ch.summary === b[i].summary &&
       ch.notes === b[i].notes &&
       ch.private_notes === b[i].private_notes &&
