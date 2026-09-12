@@ -6,7 +6,7 @@
 // (at your option) any later version.
 
 /** Purpose: Typed workshop conversation and model response contracts. */
-import type { PassageTarget } from './passageTarget';
+import type { PassageSnapshot, PassageTarget } from './passageTarget';
 
 export interface WorkshopMessage {
   role: 'user' | 'assistant';
@@ -49,6 +49,8 @@ export interface WorkshopResponse {
 }
 export interface WorkshopRequest {
   target: PassageTarget;
+  /** Live editor state at send time; independent of the pinned apply target. */
+  editor_context?: PassageSnapshot | null;
   messages: WorkshopMessage[];
   model_name?: string;
   author_viewpoint?: string;
@@ -56,8 +58,19 @@ export interface WorkshopRequest {
   timeline_position?: number;
   budget?: { context_tokens?: number; output_tokens?: number };
 }
+export interface WorkshopEditorPosition {
+  line: number;
+  column: number;
+  anchorLine: number;
+  anchorColumn: number;
+  selected: boolean;
+  chapterTitle: string;
+  documentKey: string;
+}
 export interface WorkshopTurn extends WorkshopMessage {
   id: string;
+  /** A receipt of what was available when this user message was sent. */
+  editorPosition?: WorkshopEditorPosition | null;
   response?: WorkshopResponse;
   decisions?: Record<string, 'applied' | 'rejected'>;
 }
@@ -65,5 +78,7 @@ export interface WorkshopSession {
   id: string;
   target: PassageTarget;
   turns: WorkshopTurn[];
+  draft?: string;
+  rewoundFrom?: { sessionId: string; turnId: string; messageNumber: number };
   scopeContext?: { viewpoint: string; timeline: string; timelinePosition?: number };
 }

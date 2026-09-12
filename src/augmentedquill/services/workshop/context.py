@@ -17,11 +17,13 @@ from augmentedquill.core.prompts import get_system_message
 from augmentedquill.models.workshop import (
     WorkshopBudgetEstimate,
     WorkshopContextBudget,
+    WorkshopEditorSnapshot,
     WorkshopInspectorMessage,
     WorkshopMessage,
     WorkshopTargetSnapshot,
 )
 from augmentedquill.services.exceptions import BadRequestError
+from augmentedquill.services.workshop.editor_context import live_editor_context
 from augmentedquill.services.workshop.readonly import LoreSelection, select_lore
 
 # Keep Workshop request construction bounded even when a provider advertises a
@@ -155,6 +157,7 @@ def _target_context(
     context_tokens: int,
     include_optional: bool = True,
     warnings: list[str],
+    editor_context: str = "",
 ) -> str:
     """Format target and read-only story/lore material for the model.
 
@@ -191,8 +194,9 @@ def _target_context(
     )
     mandatory = "\n\n".join(
         (
-            f"Selected passage (exact):\n{target.original_text}",
+            f"Pinned passage (exact proposal target):\n{target.original_text}",
             f"Selected lore (read-only):\n{lore_text}",
+            editor_context,
         )
     )
     if len(mandatory) > context_chars:
@@ -257,9 +261,25 @@ def build_workshop_prompt(
     lore_query: str | None,
     project_dir: Any,
     budget: WorkshopContextBudget,
+    editor_context: WorkshopEditorSnapshot | None = None,
 ) -> WorkshopPrompt:
     """Build bounded provider messages and the exact inspector copy."""
     warnings: list[str] = []
+    editor_text = live_editor_context(editor_context, target)
+    usable_history = [message for message in history if message.role != "system"]
+    # The current author request is mandatory, even when prior history is
+    # disabled. Reserve it before optional context so a long summary cannot
+    # turn a cursor question into an unsolicited critique of the pinned text.
+    latest_author = (
+        usable_history.pop().content
+        if usable_history and usable_history[-1].role == "user"
+        else ""
+    )
+    current_user_suffix = (
+        f"\n\nAuthor's latest message (answer this):\n{latest_author}"
+        if latest_author
+        else ""
+    )
     configured_context = _model_context_tokens(machine, selected_model_name)
     output_reserve = budget.output_tokens
     if output_reserve >= configured_context:
@@ -295,8 +315,9 @@ def build_workshop_prompt(
         )
 
     current_user_prefix = (
-        "Discuss the immutable manuscript target below. Suggest useful revision "
-        "directions and zero or more exact replacement alternatives.\n\n"
+        "Reference context for the author's latest message. Answer that message "
+        "directly using the live editor context when relevant. The pinned passage "
+        "and its lore remain the target for replacement proposals.\n\n"
     )
     target_chars_limit = budget.max_context_chars - len(current_user_prefix)
     if target_chars_limit <= 0:
@@ -328,10 +349,19 @@ def build_workshop_prompt(
         context_tokens=available_context,
         include_optional=False,
         warnings=warnings,
+        editor_context=editor_text,
     )
     system_token_limit = (
-        available_context - _estimate_tokens(current_user_prefix + minimum_target) - 10
+        available_context
+        - _estimate_tokens(current_user_prefix + minimum_target + current_user_suffix)
+        - 10
     )
+    if latest_author and system_token_limit < _estimate_tokens(system):
+        raise BadRequestError(
+            "The exact latest author message cannot fit alongside the complete "
+            "Workshop instructions, pinned passage and live editor context; "
+            "shorten the message or increase the context budget."
+        )
     if system_token_limit <= 0:
         raise BadRequestError(
             "The complete Workshop system instructions and exact selected passage "
@@ -351,7 +381,6 @@ def build_workshop_prompt(
     # Keep the newest bounded turns, preserving their order.  System messages
     # are forbidden as caller history so the internal system instruction cannot
     # be overridden by request data.
-    usable_history = [message for message in history if message.role != "system"]
     if budget.max_history_messages == 0:
         if usable_history:
             warnings.append("history disabled by the context budget")
@@ -375,7 +404,7 @@ def build_workshop_prompt(
     target_token_budget = (
         available_context
         - _estimate_tokens(system)
-        - _estimate_tokens(current_user_prefix)
+        - _estimate_tokens(current_user_prefix + current_user_suffix)
         - 10
     )
     target_text = _target_context(
@@ -388,10 +417,11 @@ def build_workshop_prompt(
         context_chars=target_chars_limit,
         context_tokens=target_token_budget,
         warnings=warnings,
+        editor_context=editor_text,
     )
     current_user = {
         "role": "user",
-        "content": current_user_prefix + target_text,
+        "content": current_user_prefix + target_text + current_user_suffix,
     }
     base_messages = [{"role": "system", "content": system}, current_user]
     history_newest: list[dict[str, str]] = []

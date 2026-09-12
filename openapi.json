@@ -12121,6 +12121,16 @@
           "target": {
             "$ref": "#/components/schemas/WorkshopTargetSnapshot"
           },
+          "editor_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkshopEditorSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/WorkshopMessage"
@@ -12243,6 +12253,109 @@
         ],
         "title": "WorkshopDiscussResponse",
         "description": "Non-mutating Workshop result and review metadata."
+      },
+      "WorkshopEditorSelection": {
+        "properties": {
+          "anchor": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Anchor"
+          },
+          "head": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Head"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["anchor", "head"],
+        "title": "WorkshopEditorSelection",
+        "description": "Directional UTF-16 offsets in the marker-stripped live buffer."
+      },
+      "WorkshopEditorSnapshot": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Project Id"
+          },
+          "document_id": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Document Id"
+          },
+          "document_key": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Document Key"
+          },
+          "book_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["chapter", "story"],
+            "title": "Scope"
+          },
+          "chapter_title": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Chapter Title",
+            "default": ""
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 500000,
+            "title": "Content"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/WorkshopEditorSelection"
+          },
+          "line_separator": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["\n", "\r\n", "\r"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Separator"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project_id",
+          "document_id",
+          "document_key",
+          "scope",
+          "content",
+          "selection"
+        ],
+        "title": "WorkshopEditorSnapshot",
+        "description": "Current editor state at send time, independent of the pinned target."
       },
       "WorkshopExcludedLore": {
         "properties": {

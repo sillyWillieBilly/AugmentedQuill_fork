@@ -326,6 +326,7 @@ async def discuss_workshop(
             lore_query=request.lore_query,
             project_dir=project_dir,
             budget=budget,
+            editor_context=request.editor_context,
         )
     except ReadonlyContextError as exc:
         raise BadRequestError(str(exc)) from exc

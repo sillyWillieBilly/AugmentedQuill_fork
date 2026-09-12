@@ -6,7 +6,7 @@
 // (at your option) any later version.
 
 /** Purpose: Workshop a pinned manuscript passage and explicitly apply chosen wording. */
-import React, { useEffect, useState, type RefObject } from 'react';
+import React, { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, Square, MapPin, RotateCcw } from 'lucide-react';
 import type { EditorHandle } from '../editor/Editor';
@@ -98,16 +98,32 @@ export function WorkshopPanel({
   const { t } = useTranslation();
   const workshop = useWorkshop(projectId, editorRef);
   const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [viewpoint, setViewpoint] = useState('');
   const [timeline, setTimeline] = useState('');
   const [timelinePosition, setTimelinePosition] = useState('');
   const [attachError, setAttachError] = useState<string | null>(null);
   const { session } = workshop;
+  const sessionId = session?.id;
+  const activeSessionId = useRef(sessionId);
+  activeSessionId.current = sessionId;
   useEffect(() => {
+    setInput(session?.draft ?? '');
     setViewpoint(session?.scopeContext?.viewpoint ?? '');
     setTimeline(session?.scopeContext?.timeline ?? '');
     setTimelinePosition(session?.scopeContext?.timelinePosition?.toString() ?? '');
-  }, [session?.id]);
+  }, [sessionId]);
+  const changeInput = (text: string): void => {
+    setInput(text);
+    workshop.setDraft(text);
+  };
+  const rewind = (turnId: string): void => {
+    const text = workshop.rewind(turnId);
+    if (text === null) return;
+    setAttachError(null);
+    setInput(text);
+    inputRef.current?.focus();
+  };
   const attach = (kind: 'sentence' | 'paragraph'): void => {
     setAttachError(null);
     void workshop
@@ -119,7 +135,9 @@ export function WorkshopPanel({
   const send = (): void => {
     if (!input.trim() || workshop.isLoading) return;
     const text = input;
+    const originatingSessionId = sessionId;
     setAttachError(null);
+    // Keep the saved draft until the hook has actually recorded this message.
     setInput('');
     void workshop
       .send(
@@ -130,7 +148,8 @@ export function WorkshopPanel({
         timelinePosition === '' ? undefined : Number(timelinePosition)
       )
       .then((recorded: boolean) => {
-        if (!recorded) setInput((current: string): string => current || text);
+        if (!recorded && activeSessionId.current === originatingSessionId)
+          setInput((current: string): string => current || text);
       });
   };
   const error = attachError ?? workshop.error;
@@ -198,10 +217,35 @@ export function WorkshopPanel({
           >
             {workshop.sessions.map((item: WorkshopSession) => (
               <option key={item.id} value={item.id}>
-                {item.target.chapterTitle}: {item.target.originalText.slice(0, 55)}
+                {t('workshop.sessionLabel', {
+                  number: workshop.sessions.indexOf(item) + 1,
+                })}
+                {item.rewoundFrom
+                  ? ` · ${t('workshop.branchLabel', {
+                      number:
+                        workshop.sessions.findIndex(
+                          (source: WorkshopSession): boolean =>
+                            source.id === item.rewoundFrom?.sessionId
+                        ) + 1,
+                      message: item.rewoundFrom.messageNumber,
+                    })}`
+                  : ''}
+                {` · ${item.target.chapterTitle}: ${item.target.originalText.slice(0, 55)}`}
               </option>
             ))}
           </select>
+        )}
+        {session?.rewoundFrom && (
+          <p role="status" className="text-xs text-brand-gray-500">
+            {t('workshop.rewound', {
+              message: session.rewoundFrom.messageNumber,
+              number:
+                workshop.sessions.findIndex(
+                  (source: WorkshopSession): boolean =>
+                    source.id === session.rewoundFrom?.sessionId
+                ) + 1,
+            })}
+          </p>
         )}
         <details className="text-xs">
           <summary className="cursor-pointer text-brand-gray-500">
@@ -254,9 +298,37 @@ export function WorkshopPanel({
       >
         {session?.turns.map((turn: WorkshopTurn) => (
           <article key={turn.id} className="space-y-3">
-            <h3 className="text-[10px] font-semibold uppercase tracking-wide text-brand-gray-500">
-              {t(`workshop.role.${turn.role}`)}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[10px] font-semibold uppercase tracking-wide text-brand-gray-500">
+                {t(`workshop.role.${turn.role}`)}
+              </h3>
+              {turn.role === 'user' && (
+                <button
+                  type="button"
+                  onClick={() => rewind(turn.id)}
+                  title={t('workshop.rewindHint')}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-brand-gray-500 hover:bg-brand-gray-500/15 hover:text-indigo-400"
+                >
+                  <RotateCcw size={11} />
+                  {t('workshop.rewind')}
+                </button>
+              )}
+            </div>
+            {turn.role === 'user' && (
+              <p
+                className="text-[10px] text-brand-gray-500"
+                title={turn.editorPosition?.documentKey}
+              >
+                {turn.editorPosition
+                  ? t('workshop.sentPosition', { ...turn.editorPosition })
+                  : t('workshop.positionUnavailable')}
+                {turn.editorPosition?.selected && (
+                  <span className="mt-1 block">
+                    {t('workshop.sentSelection', { ...turn.editorPosition })}
+                  </span>
+                )}
+              </p>
+            )}
             <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
               {turn.content}
             </p>
@@ -308,6 +380,7 @@ export function WorkshopPanel({
           }}
         >
           <textarea
+            ref={inputRef}
             lang={language}
             spellCheck
             aria-label={t('workshop.message')}
@@ -315,7 +388,7 @@ export function WorkshopPanel({
             maxLength={8000}
             value={input}
             onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-              setInput(event.target.value)
+              changeInput(event.target.value)
             }
             onKeyDown={(event: React.KeyboardEvent<HTMLTextAreaElement>) => {
               if (

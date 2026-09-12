@@ -896,6 +896,7 @@ export const Editor = React.memo(
           bookId: chapter.book_id,
           scope,
           content: currentContent,
+          lineSeparator: documentLineSeparator,
           selection: {
             anchor: editorOffsetToRawVisible(
               visibleContent,

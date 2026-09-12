@@ -16,6 +16,21 @@ const strings = (value: unknown): value is string[] =>
   value.every((item: unknown): boolean => typeof item === 'string');
 const textFields = (value: RecordValue, keys: string[]): boolean =>
   keys.every((key: string): boolean => typeof value[key] === 'string');
+const positiveInteger = (value: unknown): boolean =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+
+function validEditorPosition(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (record(value) &&
+      textFields(value, ['chapterTitle', 'documentKey']) &&
+      typeof value.selected === 'boolean' &&
+      ['line', 'column', 'anchorLine', 'anchorColumn'].every((key: string): boolean =>
+        positiveInteger(value[key])
+      ))
+  );
+}
 
 function validResponse(value: unknown): boolean {
   if (
@@ -75,6 +90,14 @@ export function isStoredWorkshop(
     return false;
   const target = value.target;
   if (
+    (value.draft !== undefined && typeof value.draft !== 'string') ||
+    (value.rewoundFrom !== undefined &&
+      (!record(value.rewoundFrom) ||
+        !textFields(value.rewoundFrom, ['sessionId', 'turnId']) ||
+        !positiveInteger(value.rewoundFrom.messageNumber)))
+  )
+    return false;
+  if (
     value.scopeContext !== undefined &&
     (!record(value.scopeContext) ||
       !textFields(value.scopeContext, ['viewpoint', 'timeline']) ||
@@ -110,6 +133,7 @@ export function isStoredWorkshop(
       record(turn) &&
       textFields(turn, ['id', 'content']) &&
       ['user', 'assistant'].includes(String(turn.role)) &&
+      validEditorPosition(turn.editorPosition) &&
       (turn.response === undefined || validResponse(turn.response)) &&
       (turn.decisions === undefined ||
         (record(turn.decisions) &&

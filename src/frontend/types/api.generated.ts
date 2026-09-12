@@ -4908,6 +4908,7 @@ export interface components {
      */
     WorkshopDiscussRequest: {
       target: components['schemas']['WorkshopTargetSnapshot'];
+      editor_context?: components['schemas']['WorkshopEditorSnapshot'] | null;
       /** Messages */
       messages?: components['schemas']['WorkshopMessage'][];
       /** Model Name */
@@ -4942,6 +4943,50 @@ export interface components {
       /** Fingerprint */
       fingerprint: string;
       context: components['schemas']['WorkshopContextInspector'];
+    };
+    /**
+     * WorkshopEditorSelection
+     * @description Directional UTF-16 offsets in the marker-stripped live buffer.
+     */
+    WorkshopEditorSelection: {
+      /** Anchor */
+      anchor: number;
+      /** Head */
+      head: number;
+    };
+    /**
+     * WorkshopEditorSnapshot
+     * @description Current editor state at send time, independent of the pinned target.
+     */
+    WorkshopEditorSnapshot: {
+      /** Project Id */
+      project_id: string;
+      /** Document Id */
+      document_id: string;
+      /** Document Key */
+      document_key: string;
+      /** Book Id */
+      book_id?: string | null;
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: 'chapter' | 'story';
+      /**
+       * Chapter Title
+       * @default
+       */
+      chapter_title: string;
+      /** Content */
+      content: string;
+      selection: components['schemas']['WorkshopEditorSelection'];
+      /** Line Separator */
+      line_separator?: ('\n' | '\r\n' | '\r') | null;
+      /**
+       * Language
+       * @default en
+       */
+      language: string;
     };
     /**
      * WorkshopExcludedLore

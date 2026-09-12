@@ -28,6 +28,17 @@ export const workshopEnglish = {
     attach: 'Use current passage',
     paragraph: 'Use paragraph',
     history: 'Previous workshops',
+    sessionLabel: 'Workshop {{number}}',
+    branchLabel: 'Rewound from workshop {{number}}, message {{message}}',
+    rewind: 'Rewind',
+    rewindHint:
+      'Edit and resend this message from here. Keep the original conversation.',
+    rewound:
+      'Rewound before message {{message}}. Later messages remain in workshop {{number}}. Manuscript edits stay as they are.',
+    sentPosition: 'Sent from {{chapterTitle}}, line {{line}}, column {{column}}',
+    sentSelection:
+      'Selection: line {{anchorLine}}, column {{anchorColumn}} to line {{line}}, column {{column}} (caret).',
+    positionUnavailable: 'No live cursor position was recorded for this message.',
     scope: 'Viewpoint and story time',
     viewpoint: 'Viewpoint',
     timeline: 'Timeline ID',

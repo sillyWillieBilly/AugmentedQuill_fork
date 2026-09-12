@@ -9,8 +9,9 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { api } from '../../services/api';
 import type { EditorHandle } from '../editor/Editor';
-import { capturePassage, PassageConflict } from './passageTarget';
-import type { WorkshopSession, WorkshopTurn } from './types';
+import { capturePassage, PassageConflict, type PassageSnapshot } from './passageTarget';
+import { editorPosition } from './editorContext';
+import type { WorkshopAlternative, WorkshopSession, WorkshopTurn } from './types';
 import { isStoredWorkshop } from './workshopStorage';
 
 interface WorkshopState {
@@ -43,6 +44,8 @@ export interface WorkshopController {
   clearError: () => void;
   select: (id: string) => void;
   stop: () => void;
+  rewind: (turnId: string) => string | null;
+  setDraft: (draft: string) => void;
 }
 
 /** Recover local workshop conversations without trusting malformed browser data. */
@@ -114,14 +117,20 @@ export function useWorkshop(
     }));
   };
 
-  const attach = async (
-    kind: 'sentence' | 'paragraph' = 'sentence'
+  const attachSnapshot = async (
+    snapshot: PassageSnapshot | null | undefined,
+    kind: 'sentence' | 'paragraph' = 'sentence',
+    draft?: string
   ): Promise<WorkshopSession> => {
-    const snapshot = editorRef.current?.getPassageSnapshot();
     if (!snapshot || snapshot.projectId !== projectId)
       throw new PassageConflict('document');
     const target = await capturePassage(snapshot, kind);
-    const created: WorkshopSession = { id: crypto.randomUUID(), target, turns: [] };
+    const created: WorkshopSession = {
+      id: crypto.randomUUID(),
+      target,
+      turns: [],
+      ...(draft !== undefined ? { draft } : {}),
+    };
     setState((previous: WorkshopState): WorkshopState => ({
       sessions: [...previous.sessions, created],
       currentId: created.id,
@@ -130,6 +139,10 @@ export function useWorkshop(
     setCancelled(false);
     return created;
   };
+  const attach = (
+    kind: 'sentence' | 'paragraph' = 'sentence'
+  ): Promise<WorkshopSession> =>
+    attachSnapshot(editorRef.current?.getPassageSnapshot(), kind);
 
   const send = async (
     text: string,
@@ -139,6 +152,11 @@ export function useWorkshop(
     timelinePosition?: number
   ): Promise<boolean> => {
     if (!text.trim() || activeRequest.current) return false;
+    // Capture before hashing or any other async work; never reuse the pinned caret.
+    const snapshot = editorRef.current?.getPassageSnapshot() ?? null;
+    const position =
+      snapshot?.projectId === projectId ? editorPosition(snapshot) : null;
+    const editorContext = position ? snapshot : null;
     let recorded = false;
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -146,9 +164,10 @@ export function useWorkshop(
     setCancelled(false);
     setError(null);
     try {
-      const current = session ?? (await attach());
-      if (controller.signal.aborted) return false;
-      if (current.turns.length === 0) {
+      const current = session ?? (await attachSnapshot(snapshot, 'sentence', text));
+      if (controller.signal.aborted || activeRequest.current !== controller)
+        return false;
+      if (current.turns.length === 0 && !current.rewoundFrom) {
         const fresh = editorRef.current?.getPassageSnapshot();
         if (
           !fresh ||
@@ -163,17 +182,20 @@ export function useWorkshop(
         id: crypto.randomUUID(),
         role: 'user',
         content: text.trim(),
+        editorPosition: position,
       };
       const turns = [...current.turns, userTurn];
       updateSession(current.id, (previous: WorkshopSession): WorkshopSession => ({
         ...previous,
         turns,
+        draft: '',
         scopeContext: { viewpoint, timeline, timelinePosition },
       }));
       recorded = true;
       const response = await api.forProject(projectId).workshop.discuss(
         {
           target: current.target,
+          editor_context: editorContext,
           messages: turns.slice(-12).map((turn: WorkshopTurn) => ({
             role: turn.role,
             content: turn.response
@@ -231,23 +253,85 @@ export function useWorkshop(
     replacement: string
   ): void => {
     if (!session) return;
+    const turn = session.turns.find((item: WorkshopTurn) => item.id === turnId);
+    if (
+      !turn?.response?.alternatives.some(
+        (item: WorkshopAlternative): boolean => item.id === alternativeId
+      ) ||
+      state.sessions.some(
+        (item: WorkshopSession): boolean =>
+          item.target.id === session.target.id &&
+          item.turns.some(
+            (shared: WorkshopTurn): boolean =>
+              shared.id === turnId && shared.decisions?.[alternativeId] !== undefined
+          )
+      )
+    )
+      return;
     try {
       if (decision === 'applied') {
         if (!editorRef.current) throw new PassageConflict('document');
         editorRef.current.applyPassage(session.target, replacement);
       }
-      updateSession(session.id, (previous: WorkshopSession): WorkshopSession => ({
+      // A proposal shared by retained branches is still the same checked edit.
+      setState((previous: WorkshopState): WorkshopState => ({
         ...previous,
-        turns: previous.turns.map((turn: WorkshopTurn): WorkshopTurn =>
-          turn.id === turnId
-            ? { ...turn, decisions: { ...turn.decisions, [alternativeId]: decision } }
-            : turn
+        sessions: previous.sessions.map((item: WorkshopSession): WorkshopSession =>
+          item.target.id === session.target.id
+            ? {
+                ...item,
+                turns: item.turns.map((shared: WorkshopTurn): WorkshopTurn =>
+                  shared.id === turnId
+                    ? {
+                        ...shared,
+                        decisions: { ...shared.decisions, [alternativeId]: decision },
+                      }
+                    : shared
+                ),
+              }
+            : item
         ),
       }));
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
+  };
+
+  const stop = (): void => {
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setIsLoading(false);
+    setCancelled(true);
+  };
+
+  const rewind = (turnId: string): string | null => {
+    if (!session) return null;
+    const index = session.turns.findIndex(
+      (turn: WorkshopTurn): boolean => turn.id === turnId && turn.role === 'user'
+    );
+    if (index < 0) return null;
+    stop();
+    const created: WorkshopSession = {
+      ...session,
+      id: crypto.randomUUID(),
+      turns: session.turns.slice(0, index),
+      draft: session.turns[index].content,
+      rewoundFrom: {
+        sessionId: session.id,
+        turnId,
+        messageNumber: session.turns
+          .slice(0, index + 1)
+          .filter((turn: WorkshopTurn): boolean => turn.role === 'user').length,
+      },
+    };
+    setState((previous: WorkshopState): WorkshopState => ({
+      sessions: [...previous.sessions, created],
+      currentId: created.id,
+    }));
+    setError(null);
+    setCancelled(false);
+    return created.draft ?? '';
   };
 
   return {
@@ -260,6 +344,14 @@ export function useWorkshop(
     send,
     attach,
     decide,
+    rewind,
+    setDraft: (draft: string): void => {
+      if (session)
+        updateSession(session.id, (previous: WorkshopSession): WorkshopSession => ({
+          ...previous,
+          draft,
+        }));
+    },
     clearError: (): void => setError(null),
     select: (id: string): void => {
       setState((previous: WorkshopState): WorkshopState => ({
@@ -268,11 +360,6 @@ export function useWorkshop(
       }));
       setError(null);
     },
-    stop: (): void => {
-      activeRequest.current?.abort();
-      activeRequest.current = null;
-      setIsLoading(false);
-      setCancelled(true);
-    },
+    stop,
   };
 }

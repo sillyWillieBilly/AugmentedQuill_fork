@@ -717,7 +717,7 @@ def test_exact_target_and_lore_json_are_never_clipped(tmp_path: Path):
     )
     budget = WorkshopContextBudget(
         max_context_chars=550,
-        context_tokens=512,
+        context_tokens=1024,
         max_lore_chars=0,
         output_tokens=128,
     )
@@ -743,7 +743,7 @@ def test_exact_target_and_lore_json_are_never_clipped(tmp_path: Path):
         sort_keys=True,
         separators=(",", ":"),
     )
-    assert "Selected passage (exact):\n潮水升起。" in target_message
+    assert "Pinned passage (exact proposal target):\n潮水升起。" in target_message
     assert f"Selected lore (read-only):\n{lore_payload}" in target_message
     assert prompt.inspector_messages[-1].content == target_message
     assert prompt.budget.estimated_prompt_tokens <= prompt.budget.context_budget_tokens
@@ -803,7 +803,7 @@ def test_canonical_large_model_context_is_reported_with_bounded_workshop_budget(
 ):
     project = _project(tmp_path)
     request = _request(
-        budget={"contextTokens": 512, "maxLoreChars": 0, "outputTokens": 128}
+        budget={"contextTokens": 1024, "maxLoreChars": 0, "outputTokens": 128}
     )
 
     prompt = build_workshop_prompt(
@@ -826,8 +826,8 @@ def test_canonical_large_model_context_is_reported_with_bounded_workshop_budget(
     )
 
     assert prompt.budget.context_limit_tokens == 1_000_000
-    assert prompt.budget.context_budget_tokens == 512
-    assert prompt.budget.estimated_prompt_tokens <= 512
+    assert prompt.budget.context_budget_tokens == 1024
+    assert prompt.budget.estimated_prompt_tokens <= 1024
     assert any("input allocation capped" in warning for warning in prompt.warnings)
 
     uncapped_request = _request(budget={"maxLoreChars": 0, "outputTokens": 128})
@@ -854,3 +854,105 @@ def test_canonical_large_model_context_is_reported_with_bounded_workshop_budget(
     assert any(
         "input allocation capped" in warning for warning in uncapped_prompt.warnings
     )
+
+
+def test_live_context_reaches_provider_and_inspector_without_changing_target_or_disk(
+    tmp_path: Path,
+):
+    project = _project(tmp_path)
+    before = {
+        path.name: path.read_bytes() for path in project.iterdir() if path.is_file()
+    }
+    request = _request(
+        messages=[{"role": "user", "content": "Which line is my cursor on?"}],
+        editor_context={
+            "projectId": "fixture",
+            "documentId": "chapter-2",
+            "documentKey": "chapters/two.md",
+            "scope": "chapter",
+            "chapterTitle": "New unsaved chapter",
+            "content": "Unsaved.\nCurrent line.",
+            "selection": {"anchor": 9, "head": 9},
+            "lineSeparator": "\n",
+            "language": "en",
+        },
+    )
+    response, complete = _run(
+        project,
+        request,
+        {
+            "content": json.dumps(
+                {"discussion": "Line 2, column 1.", "alternatives": []}
+            )
+        },
+    )
+    messages = complete.call_args.kwargs["messages"]
+    assert messages == [message.model_dump() for message in response.context.messages]
+    assert '"caret":{"line":2,"column":1}' in messages[-1]["content"]
+    assert '"same_document_as_pinned_passage":false' in messages[-1]["content"]
+    assert "Current line." in messages[-1]["content"]
+    assert "潮水升起。" in messages[-1]["content"]
+    assert response.target_id == request.target.id
+    assert response.fingerprint == request.target.fingerprint
+    assert response.alternatives == []
+    assert {
+        path.name: path.read_bytes() for path in project.iterdir() if path.is_file()
+    } == before
+
+
+def test_caret_metadata_is_not_silently_dropped_when_context_is_too_small(
+    tmp_path: Path,
+):
+    project = _project(tmp_path)
+    request = _request(
+        editor_context={
+            "projectId": "fixture",
+            "documentId": "1",
+            "documentKey": "chapters/one.md",
+            "scope": "chapter",
+            "content": "Live.",
+            "selection": {"anchor": 0, "head": 0},
+        },
+        budget={"max_context_chars": 550},
+    )
+    with pytest.raises(BadRequestError, match="context characters"):
+        _run(project, request, {"content": '{"discussion":"unused","alternatives":[]}'})
+
+
+@pytest.mark.parametrize("history_limit", [0, 8])
+def test_latest_author_message_is_mandatory_even_with_crowded_context(
+    tmp_path: Path, history_limit: int
+):
+    project = _project(tmp_path)
+    story = load_story_json_readonly(project)
+    story["story_summary"] = "x" * 50_000
+    (project / "story.json").write_text(json.dumps(story))
+    latest = "Which line is my cursor on?"
+    request = _request(
+        messages=[
+            {"role": "user", "content": "Old question"},
+            {"role": "assistant", "content": "Old answer"},
+            {"role": "user", "content": latest},
+        ],
+        budget={"output_tokens": 128, "max_history_messages": history_limit},
+    )
+    response, complete = _run(
+        project,
+        request,
+        {"content": '{"discussion":"Current position.","alternatives":[]}'},
+    )
+    messages = complete.call_args.kwargs["messages"]
+    assert messages[-1]["content"].endswith(
+        "Author's latest message (answer this):\n" + latest
+    )
+    assert response.context.budget.estimated_prompt_tokens <= 3968
+    if history_limit == 0:
+        assert "Old question" not in str(messages)
+        assert "Old answer" not in str(messages)
+
+
+def test_oversized_latest_author_message_fails_before_provider_call(tmp_path: Path):
+    project = _project(tmp_path)
+    request = _request(messages=[{"role": "user", "content": "x" * 100_000}])
+    with pytest.raises(BadRequestError, match="exact latest author message"):
+        _run(project, request, {"content": '{"discussion":"unused","alternatives":[]}'})

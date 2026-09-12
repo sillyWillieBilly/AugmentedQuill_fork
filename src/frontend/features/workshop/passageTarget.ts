@@ -25,10 +25,15 @@ export interface PassageSnapshot {
   content: string;
   /** Offsets in the marker-stripped CodeMirror document, in UTF-16 code units. */
   selection: { anchor: number; head: number };
+  /** CodeMirror's logical line separator; wrapping never adds source lines. */
+  lineSeparator?: string;
   language: string;
 }
 
-export interface PassageTarget extends Omit<PassageSnapshot, 'selection'> {
+export interface PassageTarget extends Omit<
+  PassageSnapshot,
+  'selection' | 'lineSeparator'
+> {
   id: string;
   fingerprint: string;
   kind: 'selection' | 'sentence' | 'paragraph';
@@ -174,7 +179,11 @@ export async function capturePassage(
   if (!text.slice(from, to).trim()) throw new PassageConflict('empty');
   const rawFrom = toOriginalOffset(snapshot.content, from, { snapPastMarkers: true });
   const rawTo = toOriginalOffset(snapshot.content, to);
-  const { selection: _selection, ...document } = snapshot;
+  const {
+    selection: _selection,
+    lineSeparator: _lineSeparator,
+    ...document
+  } = snapshot;
   return Object.freeze({
     ...document,
     id: crypto.randomUUID(),

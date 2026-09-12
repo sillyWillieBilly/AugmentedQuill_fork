@@ -142,6 +142,44 @@ class WorkshopMessage(BaseModel):
     content: str = Field(min_length=1, max_length=100_000)
 
 
+class WorkshopEditorSelection(BaseModel):
+    """Directional UTF-16 offsets in the marker-stripped live buffer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    anchor: int = Field(ge=0, strict=True)
+    head: int = Field(ge=0, strict=True)
+
+
+class WorkshopEditorSnapshot(BaseModel):
+    """Current editor state at send time, independent of the pinned target."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    project_id: str = Field(
+        min_length=1, max_length=240, validation_alias=_alias("project_id")
+    )
+    document_id: str = Field(
+        min_length=1, max_length=240, validation_alias=_alias("document_id")
+    )
+    document_key: str = Field(
+        min_length=1, max_length=500, validation_alias=_alias("document_key")
+    )
+    book_id: str | None = Field(
+        default=None, max_length=240, validation_alias=_alias("book_id")
+    )
+    scope: Literal["chapter", "story"]
+    chapter_title: str = Field(
+        default="", max_length=1000, validation_alias=_alias("chapter_title")
+    )
+    content: str = Field(max_length=500_000)
+    selection: WorkshopEditorSelection
+    line_separator: Literal["\n", "\r\n", "\r"] | None = Field(
+        default=None, validation_alias=_alias("line_separator")
+    )
+    language: str = Field(default="en", min_length=1, max_length=32)
+
+
 class WorkshopInspectorMessage(BaseModel):
     """A bounded message exactly as sent to the provider for inspection."""
 
@@ -209,6 +247,9 @@ class WorkshopDiscussRequest(BaseModel):
 
     target: WorkshopTargetSnapshot = Field(
         validation_alias=AliasChoices("target", "targetSnapshot", "target_snapshot")
+    )
+    editor_context: WorkshopEditorSnapshot | None = Field(
+        default=None, validation_alias=_alias("editor_context")
     )
     messages: list[WorkshopMessage] = Field(default_factory=list, max_length=12)
     model_name: str | None = Field(
