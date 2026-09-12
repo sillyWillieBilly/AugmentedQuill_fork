@@ -1,0 +1,39 @@
+{
+  "recorded_at": "2026-09-12T15:37:14.740916+00:00",
+  "application_commit": "0a746d44c43ab18f12b7f750d52e9842adb159c2",
+  "branch": "codex/writer-workspace",
+  "backend": {
+    "pid": 2058778,
+    "host": "127.0.0.1",
+    "port": 28000,
+    "module": "augmentedquill.main"
+  },
+  "frontend": {
+    "asset": "static/dist/assets/index-DHViiFp5.js",
+    "sha256": "82e600a4521b96206aa308571fd3e304e6732a207d2273d0b8d625662818b9d0",
+    "gzip_kib": 794.52
+  },
+  "provider": {
+    "base_url": "http://127.0.0.1:3758/v1",
+    "model": "writer",
+    "actual_followup_status": 200,
+    "output_reserve_tokens": 4096
+  },
+  "private_book_setup": {
+    "linked_documents": 17,
+    "lore_entries": 11,
+    "references": 10,
+    "original_files_verified_unchanged": 149
+  },
+  "final_headed_check": {
+    "browser": "Brave",
+    "automation": "Playwright",
+    "failed_http_requests": 0,
+    "visible_alerts": 0,
+    "disposable_save_status": 200,
+    "disposable_undo_status": 200,
+    "exact_bytes_restored": true,
+    "mode": "0640",
+    "original_book_edits_applied": 0
+  }
+}
