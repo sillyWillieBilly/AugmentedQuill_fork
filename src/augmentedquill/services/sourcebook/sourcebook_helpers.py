@@ -304,6 +304,11 @@ def _normalize_entry_data(e_data: dict) -> dict:
         "destination_relative": e_data.get("destination_relative"),
         "creates_new_timeline": e_data.get("creates_new_timeline", False),
         "timeline_id": e_data.get("timeline_id"),
+        # Keep the optional lore extension visible to callers while retaining
+        # the on-disk ``_lore`` key for compatibility with existing writers.
+        "lore": (
+            dict(e_data.get("_lore")) if isinstance(e_data.get("_lore"), dict) else None
+        ),
     }
 
 
@@ -315,6 +320,45 @@ def _get_story_data(active: Any = None) -> Any:
     story_path = active / "story.json"
     story = load_story_config(story_path) or {}
     return story, story_path
+
+
+def sourcebook_mark_ai_proposal(name_or_id: str, active: Any = None) -> bool:
+    """Mark a chat-created or chat-edited entry as an editorial proposal.
+
+    CHAT sourcebook tools can change story data, but a model response is not
+    an author decision.  Keep this boundary additive: preserve every existing
+    ``_lore`` field and change only its editorial status.  Native/UI callers do
+    not use this helper, so an author can explicitly promote an entry through
+    the native lore API without being demoted again.
+    """
+    if not isinstance(name_or_id, str) or not name_or_id.strip():
+        return False
+    story, story_path = _get_story_data(active)
+    if not story:
+        return False
+    sourcebook = story.get("sourcebook")
+    if not isinstance(sourcebook, dict):
+        return False
+    needle = name_or_id.strip().casefold()
+    found_name = next(
+        (
+            str(name)
+            for name in sourcebook
+            if isinstance(name, str) and name.casefold() == needle
+        ),
+        None,
+    )
+    if found_name is None or not isinstance(sourcebook.get(found_name), dict):
+        return False
+    entry = sourcebook[found_name]
+    metadata = entry.get("_lore")
+    metadata = dict(metadata) if isinstance(metadata, dict) else {}
+    metadata["status"] = "proposal"
+    entry["_lore"] = metadata
+    sourcebook[found_name] = entry
+    story["sourcebook"] = sourcebook
+    save_story_config(story_path, story)
+    return True
 
 
 def sourcebook_list_entries(active: Any = None) -> list[dict]:

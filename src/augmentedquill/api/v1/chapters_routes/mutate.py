@@ -30,6 +30,10 @@ from augmentedquill.services.chapters.chapters_api_ops import (
     reorder_books_in_project,
     reorder_chapters_in_project,
 )
+from augmentedquill.services.projects.content_persistence import (
+    ContentRevisionConflict,
+    async_save_chapter_content_in_project,
+)
 from augmentedquill.services.projects.projects import (
     create_new_chapter,
     delete_chapter,
@@ -131,14 +135,41 @@ async def api_update_chapter_content(
     chap_id: int = FastAPIPath(..., ge=0),
 ) -> Any:
     """Api Update Chapter Content."""
-    _, path, _ = _chapter_by_id_or_404(chap_id, active=project_dir)
-
     try:
-        path.write_text(body.content, encoding="utf-8")
+        snapshot = await async_save_chapter_content_in_project(
+            project_dir,
+            chap_id,
+            body.content,
+            expected_revision=body.expected_revision,
+            expected_filename=body.expected_filename,
+            expected_document_key=body.expected_document_key,
+        )
+    except ContentRevisionConflict as exc:
+        snapshot = exc.snapshot
+        return error_json(
+            str(exc),
+            status_code=409,
+            id=chap_id,
+            filename=snapshot.filename,
+            document_key=snapshot.document_key,
+            content=snapshot.content,
+            revision=snapshot.revision,
+        )
+    except ValueError as exc:
+        return error_json(str(exc), status_code=400)
     except OSError as exc:
         return error_json(f"Failed to write chapter: {exc}", status_code=500)
 
-    return JSONResponse(content={"ok": True})
+    return JSONResponse(
+        content={
+            "ok": True,
+            "id": chap_id,
+            "filename": snapshot.filename,
+            "document_key": snapshot.document_key,
+            "content": snapshot.content,
+            "revision": snapshot.revision,
+        }
+    )
 
 
 @router.put("/chapters/{chap_id}/summary")

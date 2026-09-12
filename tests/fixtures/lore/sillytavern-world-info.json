@@ -1,0 +1,25 @@
+{
+  "name": "Pinned compatibility fixture",
+  "custom_top_level": {
+    "future": true
+  },
+  "entries": {
+    "17": {
+      "uid": 17,
+      "key": ["Aelith", "Archivist"],
+      "keysecondary": ["brass", "key"],
+      "selectiveLogic": 3,
+      "content": "Aelith carries the brass key.",
+      "constant": false,
+      "enabled": true,
+      "insertion_order": 120,
+      "extensions": {
+        "future_extension": {
+          "keep": "exactly"
+        },
+        "probability": 40
+      },
+      "unknown_entry_field": [1, 2, 3]
+    }
+  }
+}

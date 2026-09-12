@@ -40,7 +40,11 @@ def _normalize_conflicts(conflicts: list) -> list:
 
 
 def build_chapter_entry(
-    idx: int, path: Path, story: dict, files: list[tuple[int, Path]]
+    idx: int,
+    path: Path,
+    story: dict,
+    files: list[tuple[int, Path]],
+    project_root: Path | None = None,
 ) -> dict:
     """Build Chapter Entry."""
     chapter_entry = _get_chapter_metadata_entry(story, idx, path, files) or {}
@@ -49,6 +53,10 @@ def build_chapter_entry(
     book_id = chapter_entry.get("book_id", chapter_entry.get("_parent_book_id"))
     if not book_id and story.get("project_type") == "series":
         book_id = path.parent.parent.name
+
+    document_key = path.name
+    if project_root is not None:
+        document_key = path.resolve().relative_to(project_root.resolve()).as_posix()
 
     return {
         "id": idx,
@@ -59,23 +67,24 @@ def build_chapter_entry(
         "private_notes": (chapter_entry.get("private_notes") or "").strip(),
         "conflicts": conflicts,
         "book_id": book_id,
+        "document_key": document_key,
     }
 
 
 def list_chapters_payload(active: Path | None) -> list[dict]:
     """List chapters payload."""
-    files = _scan_chapter_files()
+    files = _scan_chapter_files(active)
     if not active:
         return []
     story = load_story_config(active / "story.json") or {}
-    return [build_chapter_entry(idx, path, story, files) for idx, path in files]
+    return [build_chapter_entry(idx, path, story, files, active) for idx, path in files]
 
 
 def chapter_detail_payload(active: Path | None, chap_id: int, path: Path) -> dict:
     """Chapter Detail Payload."""
-    files = _scan_chapter_files()
+    files = _scan_chapter_files(active)
     story = load_story_config((active / "story.json") if active else None) or {}
-    base = build_chapter_entry(chap_id, path, story, files)
+    base = build_chapter_entry(chap_id, path, story, files, active)
     return {
         "id": chap_id,
         "title": base["title"],
@@ -84,6 +93,8 @@ def chapter_detail_payload(active: Path | None, chap_id: int, path: Path) -> dic
         "notes": base["notes"],
         "private_notes": base["private_notes"],
         "conflicts": base["conflicts"],
+        "book_id": base["book_id"],
+        "document_key": base["document_key"],
     }
 
 

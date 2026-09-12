@@ -14,6 +14,8 @@ TypeScript types automatically.
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, field_validator
 
 from augmentedquill.models.temporal_utils import normalize_temporal_value
@@ -81,6 +83,9 @@ class SourcebookEntry(BaseModel):
     timeline_id: str | None = (
         None  # For Time Travel branch entries: stable ID of the branch timeline
     )
+    # Additive lore metadata.  The persisted form is ``_lore`` so older
+    # Sourcebook writers keep it intact; the API exposes it as ``lore``.
+    lore: dict[str, Any] | None = None
 
     @field_validator("origin_date", mode="before")
     @classmethod

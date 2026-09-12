@@ -4137,6 +4137,55 @@ class ChatToolsTest(TestCase):
             "TestCharacter", entry_names, "list should include newly created entry"
         )
 
+        story = json.loads(
+            (self.projects_root / "demo" / "story.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            story["sourcebook"]["TestCharacter"]["_lore"]["status"],
+            "proposal",
+        )
+
+    def test_chat_sourcebook_update_demotes_canon_to_proposal(self):
+        """Model edits require an explicit author promotion before becoming canon."""
+        self._bootstrap_project()
+        story_path = self.projects_root / "demo" / "story.json"
+        story = json.loads(story_path.read_text(encoding="utf-8"))
+        story["sourcebook"] = {
+            "Canon": {
+                "description": "Author-approved text.",
+                "category": "Character",
+                "synonyms": [],
+                "images": [],
+                "keywords": [],
+                "_lore": {"status": "canon", "source": "author"},
+            }
+        }
+        story_path.write_text(json.dumps(story), encoding="utf-8")
+
+        result = self._post_single_tool(
+            "update_sourcebook_entry",
+            {
+                "name_or_id": "Canon",
+                "name": "Renamed",
+                "description": "Model-edited text for review.",
+            },
+        )
+        payload = json.loads(
+            (result.get("appended_messages") or [{}])[0].get("content") or "{}"
+        )
+        self.assertNotIn("error", payload)
+
+        updated = json.loads(story_path.read_text(encoding="utf-8"))
+        self.assertNotIn("Canon", updated["sourcebook"])
+        self.assertEqual(
+            updated["sourcebook"]["Renamed"]["description"],
+            "Model-edited text for review.",
+        )
+        self.assertEqual(
+            updated["sourcebook"]["Renamed"]["_lore"]["status"], "proposal"
+        )
+        self.assertEqual(updated["sourcebook"]["Renamed"]["_lore"]["source"], "author")
+
     def test_scoped_multi_tool_project_type_change_mid_batch(self):
         """Changing project type mid-batch executes and returns context updates.
 

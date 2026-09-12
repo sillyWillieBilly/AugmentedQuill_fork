@@ -2559,6 +2559,163 @@
         }
       }
     },
+    "/api/v1/projects/{project_name}/content-recovery": {
+      "get": {
+        "tags": ["Content Recovery"],
+        "summary": "Api List Content Recovery",
+        "description": "List valid, project-contained before/after recovery records.",
+        "operationId": "api_list_content_recovery_api_v1_projects__project_name__content_recovery_get",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecoveryListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/content-recovery/{recovery_id}": {
+      "get": {
+        "tags": ["Content Recovery"],
+        "summary": "Api Read Content Recovery",
+        "description": "Read one validated recovery pair without changing the manuscript.",
+        "operationId": "api_read_content_recovery_api_v1_projects__project_name__content_recovery__recovery_id__get",
+        "parameters": [
+          {
+            "name": "recovery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Recovery Id"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecoveryDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/content-recovery/{recovery_id}/restore": {
+      "post": {
+        "tags": ["Content Recovery"],
+        "summary": "Api Restore Content Recovery",
+        "description": "Restore a selected pair only when the caller's current base matches.",
+        "operationId": "api_restore_content_recovery_api_v1_projects__project_name__content_recovery__recovery_id__restore_post",
+        "parameters": [
+          {
+            "name": "recovery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Recovery Id"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentRecoveryRestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecoveryRestoreResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/chat": {
       "get": {
         "tags": ["Chat"],
@@ -3431,6 +3588,612 @@
               "application/json": {
                 "schema": {
                   "title": "Response Delete Sourcebook Entry Api V1 Projects  Project Name  Sourcebook  Entry Name  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/workshop/discuss": {
+      "post": {
+        "tags": ["Workshop"],
+        "summary": "Api Workshop Discuss",
+        "description": "Discuss an immutable editor snapshot without project mutation.\n\nThe route deliberately exposes no tool loop and accepts no provider\ncredentials, URL, or arbitrary model request body.  Cancellation bubbles\nthrough a cancellation watcher so a disconnected request aborts the\nprovider task instead of continuing an unnoticed model generation.",
+        "operationId": "api_workshop_discuss_api_v1_projects__project_name__workshop_discuss_post",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkshopDiscussRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkshopDiscussResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/lore/world-info": {
+      "get": {
+        "tags": ["Lore"],
+        "summary": "Api List World Info",
+        "description": "List imported raw World Info books and their unsupported options.",
+        "operationId": "api_list_world_info_api_v1_projects__project_name__lore_world_info_get",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Api List World Info Api V1 Projects  Project Name  Lore World Info Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/lore/world-info/{book_name}": {
+      "get": {
+        "tags": ["Lore"],
+        "summary": "Api Get World Info",
+        "description": "Export a raw World Info book without normalizing unknown fields.",
+        "operationId": "api_get_world_info_api_v1_projects__project_name__lore_world_info__book_name__get",
+        "parameters": [
+          {
+            "name": "book_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Book Name"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Get World Info Api V1 Projects  Project Name  Lore World Info  Book Name  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Lore"],
+        "summary": "Api Import World Info",
+        "description": "Import a World Info object, retaining all fields and original IDs.",
+        "operationId": "api_import_world_info_api_v1_projects__project_name__lore_world_info__book_name__post",
+        "parameters": [
+          {
+            "name": "book_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Book Name"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Import World Info Api V1 Projects  Project Name  Lore World Info  Book Name  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Lore"],
+        "summary": "Api Delete World Info",
+        "description": "Delete an imported World Info book.",
+        "operationId": "api_delete_world_info_api_v1_projects__project_name__lore_world_info__book_name__delete",
+        "parameters": [
+          {
+            "name": "book_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Book Name"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Api Delete World Info Api V1 Projects  Project Name  Lore World Info  Book Name  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/lore": {
+      "get": {
+        "tags": ["Lore"],
+        "summary": "Api List Lore",
+        "description": "List native Sourcebook lore and its explicit status/scope metadata.",
+        "operationId": "api_list_lore_api_v1_projects__project_name__lore_get",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoreEntry"
+                  },
+                  "title": "Response Api List Lore Api V1 Projects  Project Name  Lore Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Lore"],
+        "summary": "Api Create Lore",
+        "description": "Create a native Sourcebook entry with lore metadata.",
+        "operationId": "api_create_lore_api_v1_projects__project_name__lore_post",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoreEntryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoreEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/lore/{entry_id}": {
+      "get": {
+        "tags": ["Lore"],
+        "summary": "Api Get Lore",
+        "description": "Get a native lore entry by its stable ID or current Sourcebook name.",
+        "operationId": "api_get_lore_api_v1_projects__project_name__lore__entry_id__get",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoreEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Lore"],
+        "summary": "Api Update Lore",
+        "description": "Update Sourcebook content and/or lore metadata without losing its ID.",
+        "operationId": "api_update_lore_api_v1_projects__project_name__lore__entry_id__put",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoreEntryUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoreEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Lore"],
+        "summary": "Api Delete Lore",
+        "description": "Delete a native lore entry.",
+        "operationId": "api_delete_lore_api_v1_projects__project_name__lore__entry_id__delete",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entry Id"
+            }
+          },
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Api Delete Lore Api V1 Projects  Project Name  Lore  Entry Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_name}/lore/select": {
+      "post": {
+        "tags": ["Lore"],
+        "summary": "Api Select Lore",
+        "description": "Return deterministic lore context and an inclusion/exclusion inspector.",
+        "operationId": "api_select_lore_api_v1_projects__project_name__lore_select_post",
+        "parameters": [
+          {
+            "name": "project_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Directory name of the project",
+              "title": "Project Name"
+            },
+            "description": "Directory name of the project"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoreContextRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoreSelectionResult"
                 }
               }
             }
@@ -5172,6 +5935,39 @@
           "content": {
             "type": "string",
             "title": "Content"
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Revision"
+          },
+          "expected_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Filename"
+          },
+          "expected_document_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Document Key"
           }
         },
         "type": "object",
@@ -5248,6 +6044,25 @@
             "items": {},
             "type": "array",
             "title": "Conflicts"
+          },
+          "book_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision"
+          },
+          "document_key": {
+            "type": "string",
+            "title": "Document Key"
           }
         },
         "type": "object",
@@ -5259,7 +6074,9 @@
           "summary",
           "notes",
           "private_notes",
-          "conflicts"
+          "conflicts",
+          "revision",
+          "document_key"
         ],
         "title": "ChapterDetailResponse",
         "description": "Response body for ``GET /api/v1/chapters/{chap_id}``."
@@ -5368,6 +6185,17 @@
               }
             ],
             "title": "Book Id"
+          },
+          "document_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Key"
           }
         },
         "type": "object",
@@ -5765,6 +6593,205 @@
         "title": "ConnectivityStep",
         "description": "Result of a single step of the outbound connectivity diagnostic."
       },
+      "ContentRecoveryDetail": {
+        "properties": {
+          "recovery_id": {
+            "type": "string",
+            "title": "Recovery Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["prepared", "committed"],
+            "title": "Status"
+          },
+          "document_key": {
+            "type": "string",
+            "title": "Document Key"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "before_revision": {
+            "type": "string",
+            "title": "Before Revision"
+          },
+          "after_revision": {
+            "type": "string",
+            "title": "After Revision"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "committed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed At"
+          },
+          "before_content": {
+            "type": "string",
+            "title": "Before Content"
+          },
+          "after_content": {
+            "type": "string",
+            "title": "After Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recovery_id",
+          "status",
+          "document_key",
+          "filename",
+          "before_revision",
+          "after_revision",
+          "created_at",
+          "before_content",
+          "after_content"
+        ],
+        "title": "ContentRecoveryDetail",
+        "description": "A recovery pair including exact before and after manuscript text."
+      },
+      "ContentRecoveryListResponse": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ContentRecoverySummary"
+            },
+            "type": "array",
+            "title": "Records"
+          }
+        },
+        "type": "object",
+        "required": ["records"],
+        "title": "ContentRecoveryListResponse",
+        "description": "Response for the project recovery listing."
+      },
+      "ContentRecoveryRestoreRequest": {
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": ["before", "after"],
+            "title": "Target"
+          },
+          "expected_revision": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Expected Revision"
+          },
+          "expected_document_key": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Expected Document Key"
+          },
+          "expected_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Filename"
+          }
+        },
+        "type": "object",
+        "required": ["target", "expected_revision", "expected_document_key"],
+        "title": "ContentRecoveryRestoreRequest",
+        "description": "Explicit restore target and the caller's current checked base."
+      },
+      "ContentRecoveryRestoreResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "document_key": {
+            "type": "string",
+            "title": "Document Key"
+          }
+        },
+        "type": "object",
+        "required": ["ok", "content", "revision", "filename", "document_key"],
+        "title": "ContentRecoveryRestoreResponse",
+        "description": "Canonical content returned after a successful restore."
+      },
+      "ContentRecoverySummary": {
+        "properties": {
+          "recovery_id": {
+            "type": "string",
+            "title": "Recovery Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["prepared", "committed"],
+            "title": "Status"
+          },
+          "document_key": {
+            "type": "string",
+            "title": "Document Key"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "before_revision": {
+            "type": "string",
+            "title": "Before Revision"
+          },
+          "after_revision": {
+            "type": "string",
+            "title": "After Revision"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "committed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Committed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recovery_id",
+          "status",
+          "document_key",
+          "filename",
+          "before_revision",
+          "after_revision",
+          "created_at"
+        ],
+        "title": "ContentRecoverySummary",
+        "description": "Validated metadata for one durable content recovery pair."
+      },
       "CreateAnnotationRequest": {
         "properties": {
           "scope_type": {
@@ -6134,6 +7161,694 @@
         "required": ["images"],
         "title": "ListImagesResponse",
         "description": "Response body for ``GET /api/v1/projects/images/list``."
+      },
+      "LoreActivation": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "constant": {
+            "type": "boolean",
+            "title": "Constant",
+            "default": false
+          },
+          "primary_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Primary Keys"
+          },
+          "secondary_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Secondary Keys"
+          },
+          "selective_logic": {
+            "type": "string",
+            "enum": ["AND_ANY", "NOT_ALL", "NOT_ANY", "AND_ALL"],
+            "title": "Selective Logic",
+            "default": "AND_ANY"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order",
+            "default": 100
+          },
+          "recursive": {
+            "type": "boolean",
+            "title": "Recursive",
+            "default": false
+          },
+          "prevent_recursion": {
+            "type": "boolean",
+            "title": "Prevent Recursion",
+            "default": false
+          },
+          "exclude_recursion": {
+            "type": "boolean",
+            "title": "Exclude Recursion",
+            "default": false
+          },
+          "case_sensitive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Sensitive"
+          },
+          "match_whole_words": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Whole Words"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "LoreActivation",
+        "description": "Deterministic subset of SillyTavern World Info activation options."
+      },
+      "LoreContextRequest": {
+        "properties": {
+          "scan_text": {
+            "type": "string",
+            "title": "Scan Text",
+            "default": ""
+          },
+          "scope": {
+            "$ref": "#/components/schemas/LoreScope"
+          },
+          "budget_tokens": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Tokens"
+          },
+          "include_beliefs": {
+            "type": "boolean",
+            "title": "Include Beliefs",
+            "default": true
+          },
+          "include_proposals": {
+            "type": "boolean",
+            "title": "Include Proposals",
+            "default": false
+          },
+          "recursive": {
+            "type": "boolean",
+            "title": "Recursive",
+            "default": false
+          },
+          "max_recursion_steps": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max Recursion Steps",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "LoreContextRequest",
+        "description": "Inputs for the pure context-selection service."
+      },
+      "LoreDecision": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "title": "Entry Id"
+          },
+          "included": {
+            "type": "boolean",
+            "title": "Included"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "matched_primary": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Primary"
+          },
+          "matched_secondary": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Secondary"
+          },
+          "estimated_tokens": {
+            "type": "integer",
+            "title": "Estimated Tokens",
+            "default": 0
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "default": 0
+          },
+          "recursion_step": {
+            "type": "integer",
+            "title": "Recursion Step",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": ["entry_id", "included", "reason"],
+        "title": "LoreDecision",
+        "description": "Inspectable disposition of one candidate entry."
+      },
+      "LoreEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "other"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LoreStatus",
+            "default": "canon"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aliases"
+          },
+          "relations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Relations"
+          },
+          "sources": {
+            "items": {},
+            "type": "array",
+            "title": "Sources"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/LoreScope"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/LoreActivation"
+          },
+          "belief_actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Belief Actor"
+          },
+          "book": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book"
+          },
+          "raw_record": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Record"
+          },
+          "raw_fields": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Raw Fields"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": ["id", "name"],
+        "title": "LoreEntry",
+        "description": "A native or imported lore entry exposed to the Workshop."
+      },
+      "LoreEntryCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "other"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LoreStatus",
+            "default": "proposal"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Aliases"
+          },
+          "relations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Relations"
+          },
+          "sources": {
+            "items": {},
+            "type": "array",
+            "title": "Sources"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/LoreScope"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/LoreActivation"
+          },
+          "belief_actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Belief Actor"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": ["name"],
+        "title": "LoreEntryCreate",
+        "description": "Create a native Sourcebook lore entry."
+      },
+      "LoreEntryUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoreStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "aliases": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aliases"
+          },
+          "relations": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relations"
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoreScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoreActivation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "belief_actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Belief Actor"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "LoreEntryUpdate",
+        "description": "Partial update for native lore metadata and Sourcebook content."
+      },
+      "LoreScope": {
+        "properties": {
+          "book_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "chapter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Id"
+          },
+          "chapter_start": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Start"
+          },
+          "chapter_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter End"
+          },
+          "scene_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene Id"
+          },
+          "scene_start": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene Start"
+          },
+          "scene_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene End"
+          },
+          "viewpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Viewpoint"
+          },
+          "timeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Id"
+          },
+          "timeline_position": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Position"
+          },
+          "timeline_start": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Start"
+          },
+          "timeline_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline End"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "LoreScope",
+        "description": "Explicit scope in which a lore entry is applicable.\n\nA missing field means that the entry is unrestricted at that level.  Bounds\nare inclusive and are useful for entries that become true only after a\nchapter or scene.  Viewpoint and timeline are deliberate metadata filters;\nthey do not attempt to infer fictional truth."
+      },
+      "LoreSelectionResult": {
+        "properties": {
+          "selected": {
+            "items": {
+              "$ref": "#/components/schemas/LoreEntry"
+            },
+            "type": "array",
+            "title": "Selected"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/LoreDecision"
+            },
+            "type": "array",
+            "title": "Decisions"
+          },
+          "context_text": {
+            "type": "string",
+            "title": "Context Text",
+            "default": ""
+          },
+          "estimated_tokens": {
+            "type": "integer",
+            "title": "Estimated Tokens",
+            "default": 0
+          },
+          "budget_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Tokens"
+          },
+          "budget_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Warning"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "unsupported_options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unsupported Options"
+          }
+        },
+        "type": "object",
+        "title": "LoreSelectionResult",
+        "description": "Selected prompt material plus every relevant exclusion explanation."
+      },
+      "LoreStatus": {
+        "type": "string",
+        "enum": ["canon", "belief", "proposal"],
+        "title": "LoreStatus",
+        "description": "Editorial status of a lore assertion."
       },
       "MachineConfigResponse": {
         "properties": {
@@ -8819,6 +10534,18 @@
               }
             ],
             "title": "Timeline Id"
+          },
+          "lore": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lore"
           }
         },
         "type": "object",
@@ -9341,10 +11068,22 @@
           "content": {
             "type": "string",
             "title": "Content"
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "document_key": {
+            "type": "string",
+            "title": "Document Key"
           }
         },
         "type": "object",
-        "required": ["ok", "content"],
+        "required": ["ok", "content", "revision", "filename", "document_key"],
         "title": "StoryContentResponse",
         "description": "Response body for ``GET /api/v1/story/content``."
       },
@@ -9923,6 +11662,613 @@
         "type": "object",
         "title": "ViewStateResponse",
         "description": "Response body for view state endpoints."
+      },
+      "WorkshopAlternative": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "replacement": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Replacement"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["id", "label", "replacement"],
+        "title": "WorkshopAlternative",
+        "description": "One explicitly reviewable replacement proposal."
+      },
+      "WorkshopBudgetEstimate": {
+        "properties": {
+          "system_chars": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "System Chars"
+          },
+          "history_chars": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "History Chars"
+          },
+          "target_chars": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Target Chars"
+          },
+          "lore_chars": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Lore Chars"
+          },
+          "total_chars": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Chars"
+          },
+          "context_limit_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Context Limit Tokens"
+          },
+          "context_budget_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Context Budget Tokens"
+          },
+          "estimated_prompt_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Estimated Prompt Tokens"
+          },
+          "output_reserve_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Output Reserve Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Output Tokens"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "system_chars",
+          "history_chars",
+          "target_chars",
+          "lore_chars",
+          "total_chars",
+          "context_limit_tokens",
+          "context_budget_tokens",
+          "estimated_prompt_tokens",
+          "output_reserve_tokens",
+          "output_tokens"
+        ],
+        "title": "WorkshopBudgetEstimate",
+        "description": "Character and token estimates exposed in the context inspector."
+      },
+      "WorkshopContextBudget": {
+        "properties": {
+          "max_history_messages": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 0.0,
+            "title": "Max History Messages",
+            "default": 8
+          },
+          "max_context_chars": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 1.0,
+            "title": "Max Context Chars",
+            "default": 12000
+          },
+          "context_tokens": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32768.0,
+                "minimum": 256.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Tokens"
+          },
+          "max_lore_entries": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Max Lore Entries",
+            "default": 12
+          },
+          "max_lore_chars": {
+            "type": "integer",
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Max Lore Chars",
+            "default": 8000
+          },
+          "output_tokens": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "minimum": 128.0,
+            "title": "Output Tokens",
+            "default": 1024
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WorkshopContextBudget",
+        "description": "Caller-selectable limits, each bounded by server safety caps."
+      },
+      "WorkshopContextInspector": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/WorkshopInspectorMessage"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "selected_lore": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Selected Lore"
+          },
+          "excluded_lore": {
+            "items": {
+              "$ref": "#/components/schemas/WorkshopExcludedLore"
+            },
+            "type": "array",
+            "title": "Excluded Lore"
+          },
+          "lore_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkshopLoreDecision"
+            },
+            "type": "array",
+            "title": "Lore Decisions"
+          },
+          "unsupported_options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unsupported Options"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/WorkshopBudgetEstimate"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["messages", "budget"],
+        "title": "WorkshopContextInspector",
+        "description": "Auditable view of exactly what the provider received."
+      },
+      "WorkshopDiscussRequest": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/WorkshopTargetSnapshot"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/WorkshopMessage"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Messages"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_type": {
+            "type": "string",
+            "enum": ["CHAT", "WRITING"],
+            "title": "Model Type",
+            "default": "CHAT"
+          },
+          "author_viewpoint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Viewpoint"
+          },
+          "timeline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline"
+          },
+          "timeline_position": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Position"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/WorkshopContextBudget"
+          },
+          "lore_query": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lore Query"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["target"],
+        "title": "WorkshopDiscussRequest",
+        "description": "Request to discuss an exact manuscript target without mutating it."
+      },
+      "WorkshopDiscussResponse": {
+        "properties": {
+          "discussion": {
+            "type": "string",
+            "title": "Discussion"
+          },
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/WorkshopAlternative"
+            },
+            "type": "array",
+            "title": "Alternatives"
+          },
+          "target_id": {
+            "type": "string",
+            "title": "Target Id"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "title": "Fingerprint"
+          },
+          "context": {
+            "$ref": "#/components/schemas/WorkshopContextInspector"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "discussion",
+          "alternatives",
+          "target_id",
+          "fingerprint",
+          "context"
+        ],
+        "title": "WorkshopDiscussResponse",
+        "description": "Non-mutating Workshop result and review metadata."
+      },
+      "WorkshopExcludedLore": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["id", "reason"],
+        "title": "WorkshopExcludedLore",
+        "description": "Why one candidate lore entry was omitted from the model context."
+      },
+      "WorkshopInspectorMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["system", "user", "assistant"],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["role", "content"],
+        "title": "WorkshopInspectorMessage",
+        "description": "A bounded message exactly as sent to the provider for inspection."
+      },
+      "WorkshopLoreDecision": {
+        "properties": {
+          "entry_id": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Entry Id"
+          },
+          "included": {
+            "type": "boolean",
+            "title": "Included"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "matched_primary": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Primary"
+          },
+          "matched_secondary": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Matched Secondary"
+          },
+          "estimated_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Estimated Tokens",
+            "default": 0
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "default": 0
+          },
+          "recursion_step": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Recursion Step",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["entry_id", "included", "reason"],
+        "title": "WorkshopLoreDecision",
+        "description": "One deterministic lore selector disposition for the inspector."
+      },
+      "WorkshopMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["system", "user", "assistant"],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["role", "content"],
+        "title": "WorkshopMessage",
+        "description": "A bounded prior Workshop conversation turn.\n\nAssistant turns are serialized response objects on the next request, so\ntheir limit must be larger than the author's 8,000-character input field.\nThe service still enforces an aggregate response cap before returning a\nturn, keeping this per-message allowance finite."
+      },
+      "WorkshopTargetSnapshot": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["selection", "sentence", "paragraph"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "project_id": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Project Id"
+          },
+          "document_id": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Document Id"
+          },
+          "document_key": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Document Key"
+          },
+          "book_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["chapter", "story"],
+            "title": "Scope"
+          },
+          "chapter_title": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Chapter Title",
+            "default": ""
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 500000,
+            "minLength": 1,
+            "title": "Content"
+          },
+          "from": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "From"
+          },
+          "to": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "To"
+          },
+          "rawFrom": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rawfrom"
+          },
+          "rawTo": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rawto"
+          },
+          "original_text": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Original Text"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "title": "Fingerprint"
+          },
+          "context_before": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Context Before",
+            "default": ""
+          },
+          "context_after": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Context After",
+            "default": ""
+          },
+          "scene_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene Id"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project_id",
+          "document_id",
+          "document_key",
+          "scope",
+          "content",
+          "from",
+          "to",
+          "rawFrom",
+          "rawTo",
+          "original_text",
+          "fingerprint"
+        ],
+        "title": "WorkshopTargetSnapshot",
+        "description": "One immutable, marker-inclusive editor snapshot and checked range."
       },
       "augmentedquill__models__chat__OkResponse": {
         "properties": {

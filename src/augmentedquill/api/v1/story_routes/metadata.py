@@ -14,6 +14,7 @@ from fastapi import Path as FastAPIPath
 from fastapi.responses import JSONResponse
 
 from augmentedquill.api.v1.dependencies import ProjectDep
+from augmentedquill.api.v1.http_responses import error_json
 from augmentedquill.api.v1.story_routes.common import (
     StoryBadRequestError,
     map_story_exception,
@@ -22,14 +23,17 @@ from augmentedquill.api.v1.story_routes.common import (
 from augmentedquill.core.config import save_story_config
 from augmentedquill.models.story import StoryContentResponse
 from augmentedquill.services.exceptions import ServiceError
+from augmentedquill.services.projects.content_persistence import (
+    ContentRevisionConflict,
+    async_save_story_content_in_project,
+    read_story_content_snapshot,
+)
 from augmentedquill.services.projects.project_helpers import (
     normalize_story_for_frontend,
 )
 from augmentedquill.services.projects.projects import (
-    read_story_content,
     update_book_metadata,
     update_story_metadata,
-    write_story_content,
 )
 from augmentedquill.services.story.story_api_state_ops import (
     get_active_story_or_raise,
@@ -138,7 +142,14 @@ async def api_story_content(project_dir: ProjectDep) -> StoryContentResponse:
     """Api Story Content."""
     try:
         _require_active_story_context(project_dir)
-        return StoryContentResponse(ok=True, content=read_story_content(project_dir))
+        snapshot = read_story_content_snapshot(project_dir)
+        return StoryContentResponse(
+            ok=True,
+            content=snapshot.content,
+            revision=snapshot.revision,
+            filename=snapshot.filename,
+            document_key=snapshot.document_key,
+        )
     except Exception as exc:
         return map_story_exception(exc)
 
@@ -157,8 +168,48 @@ async def api_story_content_update(
         if not isinstance(content, str):
             raise StoryBadRequestError("content must be a string")
 
-        write_story_content(content, active=project_dir)
-        return JSONResponse(content={"ok": True})
+        expected_revision = payload.get("expected_revision")
+        if expected_revision is not None and not isinstance(expected_revision, str):
+            raise StoryBadRequestError("expected_revision must be a string")
+        expected_filename = payload.get("expected_filename")
+        if expected_filename is not None and not isinstance(expected_filename, str):
+            raise StoryBadRequestError("expected_filename must be a string")
+        expected_document_key = payload.get("expected_document_key")
+        if expected_document_key is not None and not isinstance(
+            expected_document_key, str
+        ):
+            raise StoryBadRequestError("expected_document_key must be a string")
+
+        try:
+            snapshot = await async_save_story_content_in_project(
+                project_dir,
+                content,
+                expected_revision=expected_revision,
+                expected_filename=expected_filename,
+                expected_document_key=expected_document_key,
+            )
+        except ContentRevisionConflict as exc:
+            current = exc.snapshot
+            return error_json(
+                str(exc),
+                status_code=409,
+                content=current.content,
+                revision=current.revision,
+                filename=current.filename,
+                document_key=current.document_key,
+            )
+        except ValueError as exc:
+            return error_json(str(exc), status_code=400)
+
+        return JSONResponse(
+            content={
+                "ok": True,
+                "content": snapshot.content,
+                "revision": snapshot.revision,
+                "filename": snapshot.filename,
+                "document_key": snapshot.document_key,
+            }
+        )
 
     return await _dispatch_metadata_request(request, _handler)
 

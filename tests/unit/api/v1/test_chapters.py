@@ -44,6 +44,10 @@ class ChaptersApiTest(ApiTestCase):
         self.assertIsInstance(chs, list)
         # Expect two chapters sorted by id [1,2]
         self.assertEqual([c["id"] for c in chs], [1, 2])
+        self.assertEqual(
+            [c["document_key"] for c in chs],
+            ["chapters/0001.txt", "chapters/0002.txt"],
+        )
         # Titles from story.json
         self.assertEqual([c["title"] for c in chs], ["Intro", "Climax"])
 
@@ -175,6 +179,40 @@ class ChaptersApiTest(ApiTestCase):
         pdir = self.projects_root / "update_content"
         content = (pdir / "chapters" / "0001.txt").read_text(encoding="utf-8")
         self.assertEqual(content, "Updated content text.")
+
+    def test_content_revision_guard_returns_canonical_content_and_conflict(self):
+        self._make_project_with_chapters("revision_content")
+        loaded = self.client.get("/api/v1/chapters/1")
+        self.assertEqual(loaded.status_code, 200, loaded.text)
+        loaded_data = loaded.json()
+        self.assertEqual(loaded_data["document_key"], "chapters/0001.txt")
+        self.assertTrue(loaded_data["revision"])
+
+        saved = self.client.put(
+            "/api/v1/chapters/1/content",
+            json={
+                "content": "Saved once",
+                "expected_revision": loaded_data["revision"],
+                "expected_filename": loaded_data["filename"],
+                "expected_document_key": loaded_data["document_key"],
+            },
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+        saved_data = saved.json()
+        self.assertEqual(saved_data["content"], "Saved once")
+        self.assertNotEqual(saved_data["revision"], loaded_data["revision"])
+
+        stale = self.client.put(
+            "/api/v1/chapters/1/content",
+            json={
+                "content": "Must not overwrite",
+                "expected_revision": loaded_data["revision"],
+                "expected_document_key": loaded_data["document_key"],
+            },
+        )
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertEqual(stale.json()["content"], "Saved once")
+        self.assertEqual(stale.json()["revision"], saved_data["revision"])
 
     def test_create_chapter(self):
         select_project("create_chap")

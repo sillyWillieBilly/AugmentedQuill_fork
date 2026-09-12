@@ -32,6 +32,7 @@ from augmentedquill.services.sourcebook.sourcebook_helpers import (
     sourcebook_delete_entry,
     sourcebook_get_entry,
     sourcebook_list_entries,
+    sourcebook_mark_ai_proposal,
     sourcebook_refresh_entry_keywords,
     sourcebook_remove_relation,
     sourcebook_update_entry,
@@ -335,6 +336,7 @@ async def manage_sourcebook(
             origin_date=params.entry_data.origin_date,
         )
         if "error" not in new_entry:
+            sourcebook_mark_ai_proposal(str(new_entry.get("id") or ""))
             mutations["story_changed"] = True
             refreshed = await sourcebook_refresh_entry_keywords(
                 new_entry["id"], payload
@@ -405,6 +407,7 @@ async def manage_sourcebook(
             origin_date=params.update_data.origin_date,
         )
         if "error" not in result:
+            sourcebook_mark_ai_proposal(str(result.get("id") or ""))
             mutations["story_changed"] = True
             refreshed = await sourcebook_refresh_entry_keywords(result["id"], payload)
             if isinstance(refreshed, dict):

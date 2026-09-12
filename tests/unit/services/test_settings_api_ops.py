@@ -96,10 +96,35 @@ class SettingsApiOpsTest(TestCase):
         self.assertEqual(openai["selected_chat"], "m1")
         model = openai["models"][0]
         self.assertEqual(model["timeout_s"], 60)
+        self.assertEqual(model["api_key"], "")
         self.assertEqual(model["temperature"], 0.5)
         self.assertEqual(model["max_tokens"], 1024)
+        self.assertEqual(model["suggest_loop_guard_min_repeats"], 3)
+        self.assertEqual(model["suggest_loop_guard_max_regens"], 1)
         self.assertEqual(model["stop"], ["A", "B"])
         self.assertEqual(model["extra_body"], '{"foo": "bar"}')
+
+    def test_clean_machine_openai_cfg_repairs_invalid_loop_guard_bounds(self):
+        payload, _, err = clean_machine_openai_cfg_for_put(
+            {
+                "models": [
+                    {
+                        "name": "m1",
+                        "base_url": "https://example.invalid/v1",
+                        "model": "gpt-demo",
+                        "api_key": None,
+                        "suggest_loop_guard_min_repeats": 0,
+                        "suggest_loop_guard_max_regens": 99,
+                    }
+                ]
+            }
+        )
+        self.assertIsNone(err)
+        assert payload is not None
+        model = payload["openai"]["models"][0]
+        self.assertEqual(model["api_key"], "")
+        self.assertEqual(model["suggest_loop_guard_min_repeats"], 3)
+        self.assertEqual(model["suggest_loop_guard_max_regens"], 1)
 
     def test_clean_machine_openai_cfg_for_put_rejects_required_fields(self):
         payload, selected, err = clean_machine_openai_cfg_for_put(

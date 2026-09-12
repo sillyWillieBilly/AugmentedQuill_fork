@@ -136,7 +136,12 @@ def clean_machine_openai_cfg_for_put(
         name = (model.get("name") or "").strip()
         base_url = (model.get("base_url") or "").strip()
         model_id = (model.get("model") or "").strip()
+        # machine.schema.json requires this field to be a string even when a
+        # local endpoint does not use authentication.  The frontend omits the
+        # disabled key, so persist an empty string rather than serializing
+        # ``null`` and making every subsequent config read invalid.
         api_key = model.get("api_key")
+        api_key_clean = api_key if isinstance(api_key, str) else ""
         timeout_s = model.get("timeout_s", 60)
         context_window_tokens = model.get("context_window_tokens")
         prompt_overrides = model.get("prompt_overrides", {})
@@ -175,11 +180,18 @@ def clean_machine_openai_cfg_for_put(
             except Exception:
                 extra_body_clean = ""
 
+        min_repeats = _to_optional_int(model.get("suggest_loop_guard_min_repeats"))
+        if min_repeats is None or not 2 <= min_repeats <= 8:
+            min_repeats = 3
+        max_regens = _to_optional_int(model.get("suggest_loop_guard_max_regens"))
+        if max_regens is None or not 0 <= max_regens <= 3:
+            max_regens = 1
+
         cleaned_models.append(
             {
                 "name": name,
                 "base_url": base_url,
-                "api_key": api_key,
+                "api_key": api_key_clean,
                 "timeout_s": timeout_s_int,
                 "context_window_tokens": _to_optional_int(context_window_tokens),
                 "model": model_id,
@@ -203,12 +215,8 @@ def clean_machine_openai_cfg_for_put(
                 "suggest_loop_guard_ngram": _to_optional_int(
                     model.get("suggest_loop_guard_ngram")
                 ),
-                "suggest_loop_guard_min_repeats": _to_optional_int(
-                    model.get("suggest_loop_guard_min_repeats")
-                ),
-                "suggest_loop_guard_max_regens": _to_optional_int(
-                    model.get("suggest_loop_guard_max_regens")
-                ),
+                "suggest_loop_guard_min_repeats": min_repeats,
+                "suggest_loop_guard_max_regens": max_regens,
                 "prompt_overrides": prompt_overrides,
             }
         )

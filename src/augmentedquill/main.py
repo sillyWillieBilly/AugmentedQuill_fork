@@ -25,7 +25,9 @@ from augmentedquill.api.v1.annotations import router as annotations_router
 from augmentedquill.api.v1.chapters import router as chapters_router
 from augmentedquill.api.v1.chat import router as chat_router
 from augmentedquill.api.v1.checkpoints import router as checkpoints_router
+from augmentedquill.api.v1.content_recovery import router as content_recovery_router
 from augmentedquill.api.v1.debug import router as debug_router
+from augmentedquill.api.v1.lore import router as lore_router
 from augmentedquill.api.v1.projects import router as projects_router
 from augmentedquill.api.v1.scenes import router as scenes_router
 from augmentedquill.api.v1.search import router as search_router
@@ -35,6 +37,7 @@ from augmentedquill.api.v1.settings import router as settings_router
 from augmentedquill.api.v1.sourcebook import router as sourcebook_router
 from augmentedquill.api.v1.story import router as story_router
 from augmentedquill.api.v1.view_state import router as view_state_router
+from augmentedquill.api.v1.workshop import router as workshop_router
 from augmentedquill.core.config import (
     STATIC_DIR,
     ensure_runtime_user_config_files,
@@ -151,9 +154,12 @@ def create_app() -> FastAPI:
     api_v1_router.include_router(chapters_router)
     api_v1_router.include_router(story_router)
     api_v1_router.include_router(checkpoints_router)
+    api_v1_router.include_router(content_recovery_router)
     api_v1_router.include_router(chat_router)
     api_v1_router.include_router(debug_router)
     api_v1_router.include_router(sourcebook_router)
+    api_v1_router.include_router(workshop_router)
+    api_v1_router.include_router(lore_router)
     api_v1_router.include_router(search_router)
     api_v1_router.include_router(scenes_router)
     api_v1_router.include_router(annotations_router)

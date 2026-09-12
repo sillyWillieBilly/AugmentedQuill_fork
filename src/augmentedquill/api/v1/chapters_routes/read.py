@@ -17,6 +17,9 @@ from augmentedquill.services.chapters.chapters_api_ops import (
     chapter_detail_payload,
     list_chapters_payload,
 )
+from augmentedquill.services.projects.content_persistence import (
+    read_content_snapshot,
+)
 
 router = APIRouter(prefix="/projects/{project_name}", tags=["Chapters"])
 
@@ -37,7 +40,7 @@ async def api_chapter_content(
     chapter = chapter_detail_payload(project_dir, chap_id, path)
 
     try:
-        content = path.read_text(encoding="utf-8")
+        snapshot = read_content_snapshot(project_dir, path)
     except OSError as exc:
         raise HTTPException(
             status_code=500, detail=f"Failed to read chapter: {exc}"
@@ -46,10 +49,13 @@ async def api_chapter_content(
     return {
         "id": chap_id,
         "title": chapter["title"],
-        "filename": path.name,
-        "content": content,
+        "filename": snapshot.filename,
+        "content": snapshot.content,
+        "revision": snapshot.revision,
+        "document_key": snapshot.document_key,
         "summary": chapter["summary"],
         "notes": chapter["notes"],
         "private_notes": chapter["private_notes"],
         "conflicts": chapter["conflicts"],
+        "book_id": chapter["book_id"],
     }

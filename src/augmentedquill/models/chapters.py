@@ -28,6 +28,7 @@ class ChapterSummary(BaseModel):
     private_notes: str
     conflicts: list[Any]
     book_id: str | None = None
+    document_key: str | None = None
 
 
 class ChaptersListResponse(BaseModel):
@@ -47,6 +48,9 @@ class ChapterDetailResponse(BaseModel):
     notes: str
     private_notes: str
     conflicts: list[Any]
+    book_id: str | None = None
+    revision: str
+    document_key: str
 
 
 class ChapterMetadataUpdate(BaseModel):
@@ -77,6 +81,9 @@ class ChapterContentUpdate(BaseModel):
     """Request body for updating chapter content."""
 
     content: str
+    expected_revision: str | None = None
+    expected_filename: str | None = None
+    expected_document_key: str | None = None
 
 
 class ChapterSummaryUpdate(BaseModel):

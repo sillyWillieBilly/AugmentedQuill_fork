@@ -152,6 +152,9 @@ class StoryContentResponse(BaseModel):
 
     ok: bool
     content: str
+    revision: str
+    filename: str
+    document_key: str
 
 
 # ---------------------------------------------------------------------------

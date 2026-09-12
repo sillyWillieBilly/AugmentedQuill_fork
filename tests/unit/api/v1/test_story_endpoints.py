@@ -103,6 +103,56 @@ class StoryEndpointsTest(ApiTestCase):
         (pdir / "story.json").write_text(json.dumps(story_cfg), encoding="utf-8")
         return pdir
 
+    def test_story_content_revision_guard_returns_canonical_content_and_conflict(self):
+        self._make_project("story_revision")
+        loaded = self.client.get("/api/v1/story/content")
+        self.assertEqual(loaded.status_code, 200, loaded.text)
+        loaded_data = loaded.json()
+        self.assertEqual(loaded_data["filename"], "story_content.md")
+        self.assertEqual(loaded_data["document_key"], "story_content.md")
+        self.assertTrue(loaded_data["revision"])
+
+        saved = self.client.post(
+            "/api/v1/story/content",
+            json={
+                "content": "Story saved once",
+                "expected_revision": loaded_data["revision"],
+                "expected_filename": loaded_data["filename"],
+                "expected_document_key": loaded_data["document_key"],
+            },
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+        saved_data = saved.json()
+        self.assertEqual(saved_data["content"], "Story saved once")
+
+        stale = self.client.post(
+            "/api/v1/story/content",
+            json={
+                "content": "Must not overwrite",
+                "expected_revision": loaded_data["revision"],
+                "expected_document_key": loaded_data["document_key"],
+            },
+        )
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertEqual(stale.json()["content"], "Story saved once")
+        self.assertEqual(stale.json()["revision"], saved_data["revision"])
+
+    def test_story_content_rejects_unbalanced_internal_marker(self):
+        self._make_project("story_marker_validation")
+        loaded = self.client.get("/api/v1/story/content")
+        self.assertEqual(loaded.status_code, 200, loaded.text)
+
+        rejected = self.client.post(
+            "/api/v1/story/content",
+            json={
+                "content": "<!--scene:1:end-->Plain prose",
+                "expected_revision": loaded.json()["revision"],
+                "expected_document_key": loaded.json()["document_key"],
+            },
+        )
+        self.assertEqual(rejected.status_code, 400, rejected.text)
+        self.assertIn("orphaned end marker", rejected.json()["detail"])
+
     # ---- PUT /api/v1/chapters/{id}/summary ----
     def test_put_summary_updates_story(self):
         pdir = self._make_project()
