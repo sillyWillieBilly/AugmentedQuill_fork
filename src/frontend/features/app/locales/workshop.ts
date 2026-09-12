@@ -22,6 +22,25 @@ export const workshopEnglish = {
       workshopOnly:
         'Use Workshop for this linked book. It discusses the passage and offers wording you can choose to apply.',
     },
+    outline: {
+      title: 'Scenes and sections',
+      description: 'Navigate existing headings and scene breaks in this Markdown file.',
+      split: 'Show scenes and sections beside the manuscript',
+      refresh: 'Refresh outline',
+      close: 'Back to page',
+      opening: 'Chapter opening',
+      heading: 'Heading',
+      scene: 'Scene marker {{id}}',
+      break: 'Scene break',
+      line: 'Line {{line}}',
+      empty:
+        'No explicit scene breaks or headings were found. You can add a Markdown heading or *** between scenes in the editor.',
+      changed: 'The text changed. The outline is refreshed; choose an entry again.',
+      unavailable:
+        'The current chapter is still loading. Refresh the outline when it is ready.',
+      noChapter: 'Choose a chapter to see its outline.',
+      loading: 'Loading chapter…',
+    },
     subtitle: 'Explore the wording, with your story and lore close at hand.',
     empty:
       'Leave the caret in a sentence or select a passage. Your first message will attach that exact text.',

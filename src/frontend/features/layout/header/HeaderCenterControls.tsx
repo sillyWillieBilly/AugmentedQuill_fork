@@ -117,10 +117,10 @@ export const ViewModeSelector: React.FC<ViewModeSelectorProps> = ({
     : 'bg-brand-gray-800 border-brand-gray-700';
   const dropItem = isLight ? 'hover:bg-brand-gray-100' : 'dark:hover:bg-brand-gray-700';
   return (
-    <div className="relative">
+    <div className="relative min-w-0 max-w-full">
       {/* Desktop: inline tab row */}
       <div
-        className={`${showInlineTabs ? 'flex' : 'hidden'} items-center p-1 rounded-lg border ${tabBg}`}
+        className={`${showInlineTabs ? 'flex' : 'hidden'} flex-wrap items-center p-1 rounded-lg border ${tabBg}`}
       >
         {VIEW_MODES.map((m: (typeof VIEW_MODES)[0]) => (
           <button
@@ -262,7 +262,7 @@ export const FormatToolbar: React.FC<FormatToolbarProps> = ({
     <>
       {/* Desktop inline buttons */}
       {inlineCount > 0 && (
-        <div className="hidden lg:flex items-center space-x-0.5">
+        <div className="hidden min-w-0 max-w-full lg:flex flex-wrap items-center gap-0.5">
           <div className={`w-px h-4 mx-2 ${dividerColor}`} />
           {allFormatButtons.slice(0, inlineCount).map((btn: FormatButton) => (
             <button
@@ -557,6 +557,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
       >
         <button
           onClick={() => setWorkspaceMode('page')}
+          aria-pressed={workspaceMode === 'page'}
           className={`flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-colors ${
             workspaceMode === 'page'
               ? isLight
@@ -574,7 +575,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
 
         <button
           onClick={() => setWorkspaceMode('scenes')}
-          disabled={linkedMarkdown}
+          aria-pressed={workspaceMode === 'scenes'}
           className={`flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-colors ${
             workspaceMode === 'scenes'
               ? isLight
@@ -584,7 +585,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
                 ? 'text-brand-gray-500 hover:text-brand-gray-700'
                 : 'text-brand-gray-400 hover:text-brand-gray-200 hover:bg-brand-gray-700/50'
           }`}
-          title={t(linkedMarkdown ? 'workshop.linked.workshopOnly' : 'Scenes Mode')}
+          title={t(linkedMarkdown ? 'workshop.outline.title' : 'Scenes Mode')}
         >
           <BookOpen size={14} />
           <span className="hidden xl:inline">{t('Scenes')}</span>
@@ -592,7 +593,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
 
         <button
           onClick={() => setWorkspaceMode('split')}
-          disabled={linkedMarkdown}
+          aria-pressed={workspaceMode === 'split'}
           className={`flex items-center justify-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-colors ${
             workspaceMode === 'split'
               ? isLight
@@ -602,7 +603,7 @@ export const HeaderCenterControls: React.FC<HeaderCenterControlsProps> = ({
                 ? 'text-brand-gray-500 hover:text-brand-gray-700'
                 : 'text-brand-gray-400 hover:text-brand-gray-200 hover:bg-brand-gray-700/50'
           }`}
-          title={t(linkedMarkdown ? 'workshop.linked.workshopOnly' : 'Split Mode')}
+          title={t(linkedMarkdown ? 'workshop.outline.split' : 'Split Mode')}
         >
           <Columns size={14} />
           <span className="hidden xl:inline">{t('Split')}</span>

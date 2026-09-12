@@ -13,10 +13,12 @@
 
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 import { HeaderCenterControls } from './HeaderCenterControls';
 import type { AppSettings } from '../../types';
+import { useStoryStore } from '../../../stores/storyStore';
+import { useUIStore } from '../../../stores/uiStore';
 
 describe('HeaderCenterControls', () => {
   const noop = vi.fn();
@@ -138,5 +140,40 @@ describe('HeaderCenterControls', () => {
       expect(btn).toBeInstanceOf(HTMLButtonElement);
       expect((btn as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  it('enables scene navigation for linked Markdown while keeping writing actions unavailable', () => {
+    cleanup();
+    const original = useStoryStore.getState().story;
+    const originalMode = useUIStore.getState().workspaceMode;
+    useStoryStore.setState({ story: { ...original, storage_mode: 'linked-markdown' } });
+    useUIStore.getState().setWorkspaceMode('page');
+    try {
+      render(
+        <HeaderCenterControls
+          {...baseProps}
+          aiControls={{
+            handleAiAction: noop,
+            isAiActionLoading: false,
+            isWritingAvailable: true,
+            isChapterEmpty: false,
+          }}
+        />
+      );
+      const scenes = screen.getByRole('button', { name: 'Scenes', exact: true });
+      const split = screen.getByRole('button', { name: 'Split', exact: true });
+      expect((scenes as HTMLButtonElement).disabled).toBe(false);
+      expect((split as HTMLButtonElement).disabled).toBe(false);
+      fireEvent.click(scenes);
+      expect(useUIStore.getState().workspaceMode).toBe('scenes');
+      fireEvent.click(split);
+      expect(useUIStore.getState().workspaceMode).toBe('split');
+      expect(screen.queryByTitle('Extend Chapter (WRITING model)')).toBeNull();
+      expect(noop).not.toHaveBeenCalled();
+    } finally {
+      cleanup();
+      useStoryStore.setState({ story: original });
+      useUIStore.getState().setWorkspaceMode(originalMode);
+    }
   });
 });

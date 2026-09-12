@@ -46,9 +46,11 @@ import {
   adjustAnnotationRangesForStrippedMarkers,
 } from '../editor/annotationPlugin';
 
-import { useWorkspaceMode } from '../../stores/uiStore';
+import { useWorkspaceMode, useUIStore } from '../../stores/uiStore';
 import { EditorToolbar } from '../editor/EditorToolbar';
 import { ScenesPanelContainer } from '../scenes/ScenesPanelContainer';
+
+const LinkedSceneOutline = React.lazy(() => import('../scenes/LinkedSceneOutline'));
 
 type AppMainLayoutProps = {
   sidebarControls: MainSidebarControls;
@@ -116,7 +118,14 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
   }: AppMainLayoutProps) => {
     const { bgMain, isLight, currentTheme } = useTheme();
     const { t } = useTranslation();
-    const workspaceMode = useWorkspaceMode();
+    const requestedWorkspaceMode = useWorkspaceMode();
+    const linkedMarkdown = useStoryStore(
+      (state: StoryStoreState): boolean =>
+        state.story.storage_mode === 'linked-markdown'
+    );
+    // Linked scene navigation keeps the live editor mounted. Native scene
+    // planning uses a different storage format and remains in its own branch.
+    const workspaceMode = linkedMarkdown ? 'page' : requestedWorkspaceMode;
 
     if (!sidebarControls || !editorControls || !chatControls) {
       console.error('AppMainLayout missing required controls', {
@@ -279,7 +288,7 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
     } = useAnnotations(projectName);
 
     const shouldShowAnnotationPanel =
-      workspaceMode !== 'scenes' && !!currentChapter && annotations.length > 0;
+      requestedWorkspaceMode !== 'scenes' && !!currentChapter && annotations.length > 0;
 
     // Compute and dispatch annotation ranges whenever annotations, chapter
     // content, or editor readiness changes.  Defined after useAnnotations so
@@ -636,8 +645,36 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
           id="aq-workspace"
           role="main"
           aria-label={workspaceMode === 'scenes' ? t('Scenes') : t('Story editor')}
-          className={`flex-1 flex relative overflow-hidden w-full h-full ${bgMain}`}
+          className={`flex-1 min-w-0 flex relative overflow-hidden w-full h-full ${bgMain}`}
         >
+          {linkedMarkdown && requestedWorkspaceMode !== 'page' && (
+            <aside
+              className={`min-h-0 flex flex-col border-r border-brand-gray-500/20 ${bgMain} ${
+                requestedWorkspaceMode === 'scenes'
+                  ? 'absolute inset-0 z-10'
+                  : 'w-64 max-w-[45%] shrink-0'
+              }`}
+            >
+              <React.Suspense fallback={<p className="p-4">{t('Loading...')}</p>}>
+                <LinkedSceneOutline
+                  projectId={projectName}
+                  chapter={currentChapter ?? null}
+                  editorRef={editorRef}
+                  isLoading={isChapterLoading ?? false}
+                  onClose={(): void => useUIStore.getState().setWorkspaceMode('page')}
+                  onNavigate={(): void => {
+                    if (requestedWorkspaceMode === 'scenes') {
+                      const view = editorRef.current?.getEditorView();
+                      useUIStore.getState().setWorkspaceMode('page');
+                      requestAnimationFrame((): void => {
+                        if (view === editorRef.current?.getEditorView()) view?.focus();
+                      });
+                    }
+                  }}
+                />
+              </React.Suspense>
+            </aside>
+          )}
           {workspaceMode === 'split' ? (
             <>
               <div className="w-1/3 border-r dark:border-brand-gray-800 h-full overflow-hidden">
@@ -731,7 +768,13 @@ export const AppMainLayout: React.FC<AppMainLayoutProps> = React.memo(
               />
             </div>
           ) : (
-            <div className="flex-1 flex flex-col min-w-0 h-full relative">
+            <div
+              className="flex-1 flex flex-col min-w-0 h-full relative"
+              inert={linkedMarkdown && requestedWorkspaceMode === 'scenes'}
+              aria-hidden={
+                linkedMarkdown && requestedWorkspaceMode === 'scenes' ? true : undefined
+              }
+            >
               <EditorToolbar
                 viewControls={viewControls}
                 formatControls={formatControls}

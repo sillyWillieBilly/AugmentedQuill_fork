@@ -172,6 +172,8 @@ function ChapterListInner({
 
   // Toggle between summary view and compact scene tree view.
   const [scenesMode, setScenesMode] = useState(false);
+  const workspaceMode = useUIStore((state: UIStoreState) => state.workspaceMode);
+  const showingScenes = linkedMarkdown ? workspaceMode !== 'page' : scenesMode;
 
   // Keep transient drag state local so failed reorder requests do not corrupt source props.
   const [draggedItem, setDraggedItem] = useState<{
@@ -891,7 +893,7 @@ function ChapterListInner({
         />
       )}
       <div
-        className={`p-4 border-b flex justify-between items-center sticky top-0 z-10 ${bgClass} ${
+        className={`p-4 border-b flex shrink-0 justify-between items-center sticky top-0 z-10 ${bgClass} ${
           isLight ? 'border-brand-gray-200' : 'border-brand-gray-800'
         }`}
       >
@@ -913,12 +915,18 @@ function ChapterListInner({
           )}
         </div>
         <button
-          onClick={(): void => setScenesMode((prev: boolean) => !prev)}
-          disabled={linkedMarkdown}
+          onClick={(): void => {
+            if (linkedMarkdown) {
+              useUIStore.getState().setWorkspaceMode(showingScenes ? 'page' : 'split');
+            } else {
+              setScenesMode((prev: boolean) => !prev);
+            }
+          }}
+          aria-pressed={showingScenes}
           className={`p-1 rounded transition-colors ${btnHover}`}
-          title={scenesMode ? t('Show chapters view') : t('Show scenes view')}
+          title={showingScenes ? t('Show chapters view') : t('Show scenes view')}
         >
-          {scenesMode ? <FileText size={16} /> : <ListTree size={16} />}
+          {showingScenes ? <FileText size={16} /> : <ListTree size={16} />}
         </button>
       </div>
 
@@ -938,7 +946,7 @@ function ChapterListInner({
           isLight={isLight}
         />
       ) : (
-        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 space-y-2 [scrollbar-gutter:stable]">
           {projectType === 'series' ? (
             <div className="space-y-4">
               {displayBooks.map((book: Book, bIdx: number) => {

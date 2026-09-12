@@ -110,7 +110,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
       null
     );
 
-    // Refs used during render for dynamic maxHeight computation
+    // Actual available height is used when redistributing a dragged section.
     const sidebarContentRef = React.useRef<HTMLDivElement>(null);
 
     // Minimum visible space reserved for the sourcebook header (never pushed off-screen).
@@ -118,9 +118,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
 
     // Minimum height for any resizable section (matches CollapsibleSection minHeaderHeight).
     const SECTION_MIN_HEIGHT = 56;
-
-    const containerEl = sidebarContentRef.current;
-    const containerHeight = containerEl?.clientHeight ?? 0;
 
     // Redistribute space when one section is resized: if Story grows too large,
     // shrink Chapters to keep sourcebook visible, and vice versa.
@@ -174,9 +171,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
         id="aq-sidebar"
         role="navigation"
         aria-label={t('Project sidebar')}
-        className={`fixed inset-y-0 left-0 top-14 w-[var(--sidebar-width)] flex-col border-r flex-shrink-0 z-40 transition-transform duration-300 ease-in-out flex h-full ${
+        className={`fixed bottom-0 left-0 top-14 w-[var(--sidebar-width)] min-h-0 flex-col border-r flex-shrink-0 z-40 transition-transform duration-300 ease-in-out flex ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${workspaceMode !== 'split' ? 'lg:relative lg:top-auto' : ''} ${
+        } ${workspaceMode !== 'split' ? 'lg:relative lg:top-auto lg:h-full' : ''} ${
           workspaceMode !== 'split' && !isSidebarOpen ? 'lg:hidden' : ''
         } ${
           isLight
@@ -196,7 +193,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = React.memo(
 
         <div
           ref={sidebarContentRef}
-          className="relative z-40 flex flex-col h-full overflow-hidden flex-1 bg-inherit"
+          className="relative z-40 flex min-h-0 flex-1 flex-col overflow-hidden bg-inherit"
         >
           {(focusedSection === null || focusedSection === 'story') && (
             <CollapsibleSection

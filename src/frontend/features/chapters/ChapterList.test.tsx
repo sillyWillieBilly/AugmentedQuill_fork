@@ -22,6 +22,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import i18n from '../app/i18n';
 import { ChapterList } from './ChapterList';
 import type { Chapter } from '../../types';
+import { useUIStore } from '../../stores/uiStore';
 
 const { updateMetadataMock, updateTitleMock, updateBookMetadataMock } = vi.hoisted(
   () => ({
@@ -87,6 +88,7 @@ function mkChapter(overrides: Partial<Chapter> = {}): Chapter {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useUIStore.getState().setWorkspaceMode('page');
 });
 
 afterEach(() => {
@@ -95,6 +97,21 @@ afterEach(() => {
 });
 
 describe('ChapterList metadata editing', () => {
+  it('opens and closes the linked Markdown outline without changing chapter data', () => {
+    const { onSelect, onDelete, onCreate, onUpdateChapter } = renderChapterList(
+      [mkChapter()],
+      true
+    );
+    const show = screen.getByRole('button', { name: 'Show scenes view' });
+    expect((show as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(show);
+    expect(useUIStore.getState().workspaceMode).toBe('split');
+    fireEvent.click(screen.getByRole('button', { name: 'Show chapters view' }));
+    expect(useUIStore.getState().workspaceMode).toBe('page');
+    for (const action of [onSelect, onDelete, onCreate, onUpdateChapter])
+      expect(action).not.toHaveBeenCalled();
+  });
+
   it('keeps linked files selectable while preventing delete, create and drag reorder', () => {
     const { onSelect, onDelete, onCreate } = renderChapterList([mkChapter()], true);
     const select = screen.getByRole('button', { name: /Chapter 1 Initial summary/ });

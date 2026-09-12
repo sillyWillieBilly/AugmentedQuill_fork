@@ -156,7 +156,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const inlineCount = 10;
 
   return (
-    <div className="flex w-full justify-center items-center px-4 py-2 space-x-2 xl:space-x-4 border-b bg-brand-gray-50/50 dark:bg-brand-gray-900/50 dark:border-brand-gray-800">
+    <div className="flex w-full shrink-0 flex-wrap justify-center items-center gap-2 px-4 py-2 border-b bg-brand-gray-50/50 dark:bg-brand-gray-900/50 dark:border-brand-gray-800">
       <ViewModeSelector
         viewMode={viewMode}
         setViewMode={setViewMode}

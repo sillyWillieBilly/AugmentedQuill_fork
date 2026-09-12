@@ -80,7 +80,7 @@ function createRafController(): {
 }
 
 describe('CollapsibleSection: drag handle visibility', () => {
-  it('should use shrink-0 to prevent flex container from overriding explicit heights', () => {
+  it('keeps an explicit preferred height but permits shrinking to the available viewport', () => {
     const { container } = render(
       <CollapsibleSection
         title="Test"
@@ -94,11 +94,13 @@ describe('CollapsibleSection: drag handle visibility', () => {
     );
 
     const section = container.firstChild as HTMLElement;
-    expect(section.className).toContain('shrink-0');
+    expect(section.style.height).toBe('200px');
+    expect(section.className.split(' ')).toContain('shrink');
+    expect(section.className).not.toContain('shrink-0');
     expect(section.className).not.toContain('flex-1');
   });
 
-  it('should use flex-1 and shrink-0 when isLast is true', () => {
+  it('allows the last expanded section to fill the available space', () => {
     const { container } = render(
       <CollapsibleSection
         title="Test"
@@ -114,7 +116,7 @@ describe('CollapsibleSection: drag handle visibility', () => {
 
     const section = container.firstChild as HTMLElement;
     expect(section.className).toContain('flex-1');
-    expect(section.className).toContain('shrink-0');
+    expect(section.className).not.toContain('shrink-0');
   });
 
   it('should render the drag handle when isLast is false and not collapsed', () => {

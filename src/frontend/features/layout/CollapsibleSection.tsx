@@ -87,10 +87,15 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
   const handleHeaderKeyDown = getHeaderKeyDownHandler(onToggle);
 
+  // A saved height is the preferred size. Let expanded sections shrink when the
+  // viewport cannot fit those preferences; the measured minimum below preserves
+  // every header and resize handle. The content then owns its actual overflow.
+  const flexClass = isCollapsed ? 'shrink-0' : isLast ? 'flex-1' : 'shrink';
+
   return (
     <div
       ref={sectionRef}
-      className={`flex flex-col overflow-hidden ${isLast ? 'flex-1 shrink-0' : 'shrink-0'} ${!isLast ? `border-b ${borderClass}` : ''}`}
+      className={`flex min-h-0 flex-col overflow-hidden ${flexClass} ${!isLast ? `border-b ${borderClass}` : ''}`}
       style={!isLast && !isCollapsed && height ? { height: `${height}px` } : {}}
     >
       <div
@@ -137,7 +142,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         )}
       </div>
       {!isCollapsed && (
-        <div id={contentId} className="flex-1 overflow-y-auto flex flex-col">
+        <div id={contentId} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {children}
         </div>
       )}

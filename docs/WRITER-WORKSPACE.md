@@ -5,6 +5,33 @@ Start with `make run` in this checkout, then open http://127.0.0.1:28000.
 Both use the same ignored `.local-data/` directory. See
 [development commands](DEVELOPMENT.md) for setup and validation.
 
+## Find a chapter or scene
+
+Open the left sidebar with **Menu**. Put the pointer over the chapter cards and
+use the mouse wheel or a two-finger scroll; the chapter list has its own scrollbar.
+Click a chapter card to open that file. The diagonal-arrows button beside
+**Chapters** gives the list the full sidebar; click it again to restore the other
+sections. Story, Chapters and Sourcebook fit the window even if a previous session
+saved larger preferred panel heights.
+
+For a linked Markdown book, **Show scenes view** beside the chapter-list heading
+opens **Scenes and sections** alongside the manuscript. **Scenes** at the top
+shows the outline across the workspace, **Split** shows both, and **Page** or
+**Back to page** returns to the manuscript. Click an entry to place the caret at
+its displayed line. Full Scenes returns to Page after a jump.
+
+The outline reads the current editor text, including unsaved wording, and lists
+existing Markdown headings, scene markers and dividers such as `***`. An initial
+chapter heading and a final export-only page break do not create extra scenes.
+A chapter without internal divisions has one **Chapter opening** entry and an
+explanation. These controls navigate existing structure; adding or rearranging
+scenes still requires an explicit manuscript edit. **Refresh outline** rereads
+the live text. If the text changes before a click, the outline refreshes and asks
+you to choose again so it cannot jump using an obsolete position.
+
+The outline keeps the same editor buffer and Undo history through Page, Scenes
+and Split. It does not save prose, create scenes or change lore.
+
 ## Work on a sentence
 
 1. Open a chapter and leave the caret inside the sentence, or select an exact
