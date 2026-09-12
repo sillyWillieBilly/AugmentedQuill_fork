@@ -22,6 +22,16 @@ frontend explicitly proxies to it. Ctrl+C stops this launch's child processes.
 Runtime files stay under ignored `.local-data/`; tests have their own temporary
 data. These commands neither launch nor reconfigure an inference service.
 
+For a taskbar/file-manager launch, run `./start-augmentedquill.sh`. It reuses an
+already running app or starts the backend in the background, waits for both the
+API and frontend to respond, then opens a Brave window. Repeated clicks cannot
+start duplicate servers. Logs are in `.local-data/logs/launcher.log` and
+`.local-data/logs/brave-launcher.log`; a server started by the launcher has its PID
+recorded in `.local-data/launcher.pid`. Closing Brave leaves the backend running.
+The launcher uses the existing frontend build and builds only when it is missing;
+after changing frontend code, use `make run` to rebuild. The installed desktop
+entry on the author's machine is named **AugmentedQuill Writer**.
+
 The author supplied ModelWarden at `http://127.0.0.1:3758/v1`, model `writer`.
 The isolated app uses it as the writing/chat/editing connection. The route
 returned `deepseek-v4-flash` during verification; a loopback proxy address does
