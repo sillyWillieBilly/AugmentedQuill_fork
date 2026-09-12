@@ -91,6 +91,21 @@ export function useBrowserHistory({
 
   useEffect((): (() => void) => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      // CodeMirror and native editable controls own their local undo stacks.
+      // Their handlers run before this window listener and may already have
+      // consumed the shortcut; invoking story undo as well would undo twice
+      // while leaving the persisted editor buffer out of sync.
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target.isContentEditable ||
+          target.closest('[contenteditable="true"]') !== null)
+      )
+        return;
+
       const isCmdOrCtrl = event.metaKey || event.ctrlKey;
       if (!isCmdOrCtrl || event.altKey) return;
 
